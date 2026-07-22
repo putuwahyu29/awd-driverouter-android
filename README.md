@@ -27,15 +27,10 @@
 ## 📌 Table of Contents
 - [✨ Key Features](#-key-features)
 - [📷 Screenshots](#-screenshots)
-- [☁️ Supported Providers](#️-supported-providers)
+- [☁️ Supported Providers & Setup Guide](#️-supported-providers--setup-guide)
 - [📁 Architecture & Tech Stack](#-architecture--tech-stack)
 - [🚀 Getting Started](#-getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Setup Guide](#setup-guide)
 - [🛠️ Developer Guide](#️-developer-guide)
-  - [Project Structure](#project-directory-structure)
-  - [Building from Source](#building-from-source)
 - [⚙️ Troubleshooting](#️-troubleshooting)
 - [⚠️ Disclaimer](#️-disclaimer)
 - [📄 License](#-license)
@@ -44,10 +39,10 @@
 
 ## ✨ Key Features
 
-*   **🔀 Unified Cloud Management**: Connect and navigate multiple cloud accounts (Google Drive, OneDrive, etc.) from a single intuitive interface.
+*   **🔀 Unified Cloud Management**: Connect and navigate multiple cloud accounts (Google Drive, OneDrive, Dropbox, Box, WebDAV, SFTP) from a single intuitive interface.
 *   **📤 Intelligent Routing**: Automatically distribute uploads across providers based on smart strategies like "Largest Free Space" or "Round Robin".
 *   **📂 Professional File Explorer**: Full-featured manager with multi-selection, batch actions, internal PDF preview, and native app integration.
-*   **🔗 Native Sharing & Collaboration**: Share files using the providers' native collaboration features, including adding people via email and setting permissions.
+*   **🔄 Automatic Background Backup**: Folder sync running reliably in the background via Android **Foreground Services**.
 *   **🔒 Secure Credential Storage**: Uses Android's **EncryptedSharedPreferences** to store OAuth tokens and server credentials securely at rest.
 *   **🎨 Material 3 Design**: Fully responsive UI with support for Dynamic Color, Dark/Light modes, and bilingual support (EN/ID).
 
@@ -55,23 +50,28 @@
 
 ## 📷 Screenshots
 
-| | | |
+| Home File Explorer | Navigation Drawer | Auto Backup |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/files.png" width="230" alt="File Explorer"/><br/>**File Explorer** | <img src="docs/screenshots/accounts.png" width="230" alt="Multi-Account"/><br/>**Accounts Management** | <img src="docs/screenshots/preview.png" width="230" alt="PDF Preview"/><br/>**Internal PDF Preview** |
-| <img src="docs/screenshots/sharing.png" width="230" alt="Native Sharing"/><br/>**Native Sharing UI** | <img src="docs/screenshots/selection.png" width="230" alt="Multi-Select"/><br/>**Multi-Selection Mode** | <img src="docs/screenshots/settings.png" width="230" alt="Settings"/><br/>**Settings & Strategy** |
+| <img src="docs/screenshots/home.jpg" width="240" alt="Home File Explorer"/><br/>**Home File Explorer** | <img src="docs/screenshots/drawer.jpg" width="240" alt="Navigation Drawer"/><br/>**Navigation Drawer** | <img src="docs/screenshots/backup.jpg" width="240" alt="Auto Backup"/><br/>**Auto Backup** |
+
+| Upload Strategy | Cloud Accounts | File Upload |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/strategy.jpg" width="240" alt="Upload Strategy"/><br/>**Upload Strategy** | <img src="docs/screenshots/account.jpg" width="240" alt="Cloud Accounts"/><br/>**Cloud Accounts** | <img src="docs/screenshots/upload.jpg" width="240" alt="File Upload"/><br/>**File Upload** |
 
 ---
 
-## ☁️ Supported Providers
+## ☁️ Supported Providers & Setup Guide
 
-| Provider | Connection | Features |
-| :--- | :---: | :--- |
-| **Google Drive** | OAuth 2.0 | Native Sharing, Sync, Quota |
-| **OneDrive** | OAuth 2.0 | Native Sharing, Sync, Quota |
-| **Dropbox** | OAuth 2.0 | File Browsing, Basic Sharing |
-| **Box** | OAuth 2.0 | File Browsing, Basic Sharing |
-| **WebDAV** | Basic Auth | Multi-Account Support |
-| **SFTP (SSH)** | Password | Secure Remote Access |
+In the Android app, go to **Settings → Cloud Provider Settings** to view your app identity details (**Package Name**, **SHA-1 (HEX)**, **SHA-1 (Base64)**, and **Redirect URIs**) with 1-click copy buttons.
+
+| Provider | Type | Provider Console Link | Setup & Credentials Flow |
+| :--- | :---: | :--- | :--- |
+| **Google Drive** | OAuth 2.0 | [Google Cloud Console](https://console.cloud.google.com/) | **1.** Create **OAuth Client ID #1 (Web application)** -> Copy Client ID to App Settings.<br/>**2.** Create **OAuth Client ID #2 (Android)** -> Register your app's **Package Name** & **SHA-1 (HEX)** from Settings. |
+| **OneDrive** | OAuth 2.0 | [Microsoft Entra](https://entra.microsoft.com/) | **1.** Register App in Entra admin center.<br/>**2.** Under *Authentication*, add **Android Platform** with your **Package Name** & **SHA-1 (Base64)** Signature Hash.<br/>**3.** Copy **Application (client) ID** into App Settings. |
+| **Dropbox** | OAuth 2.0 | [Dropbox Console](https://www.dropbox.com/developers/apps) | **1.** Create app with Scoped Access (`files.content.read/write`).<br/>**2.** Register Redirect URI: `awd-driverouter://dropbox-auth`<br/>**3.** Copy **App Key** into App Settings. |
+| **Box** | OAuth 2.0 | [Box Console](https://app.box.com/developers/console) | **1.** Create Custom App (User Authentication OAuth 2.0).<br/>**2.** Register Redirect URI: `awd-driverouter://box-auth`<br/>**3.** Copy **Client ID** & **Client Secret** into App Settings. |
+| **WebDAV** | Protocol | - | Direct connection. Enter **Server URL**, **Username**, and **Password** directly in the *Connect Account* dialog. |
+| **SFTP (SSH)** | Protocol | - | Direct connection. Enter **Host/IP**, **Port** (default 22), **Username**, and **Password** in the *Connect Account* dialog. |
 
 ---
 
@@ -91,15 +91,11 @@
 
 ### Prerequisites
 *   Android device running Android 8.0 (API 26) or higher.
-*   Cloud provider API credentials (for Google/OneDrive setup).
+*   Cloud provider API credentials (for Google, OneDrive, Dropbox, or Box).
 
 ### Installation
 1. Download the latest APK from the [Releases](https://github.com/putuwahyu29/awd-driverouter-android/releases) page.
 2. Install the APK on your device (ensure "Install from Unknown Sources" is enabled).
-
-### Setup Guide
-*   **OAuth Providers**: Go to **Settings**, configure your Client IDs, then go to **Accounts** to connect.
-*   **WebDAV/SFTP**: Direct login via the **Accounts** screen using your server details.
 
 ---
 
@@ -116,6 +112,7 @@ awd-driverouter-android/
 │   │   ├── ui/             # Jetpack Compose screens and viewmodels
 │   │   └── util/           # Formatting and helper utilities
 │   └── build.gradle.kts    # Module dependencies
+├── docs/screenshots/       # Screenshots for documentation
 ├── gradle/                 # Gradle wrapper
 └── README.md               # English Documentation
 ```
@@ -135,15 +132,15 @@ awd-driverouter-android/
 
 ## ⚙️ Troubleshooting
 
-*   **OAuth Callback Issues**: Ensure the redirect URI in your provider console matches your configuration.
-*   **Storage Quota Errors**: Some WebDAV servers may not report quota correctly.
-*   **PDF Loading**: Large PDF files may take a few seconds to render on older devices.
+*   **OAuth Callback Issues**: Ensure the custom scheme redirect URI (`awd-driverouter://dropbox-auth` or `awd-driverouter://box-auth`) is registered in your provider console.
+*   **Google Drive Error 10**: Verify that your SHA-1 (HEX) fingerprint and Package Name in Google Cloud Console match your APK signature.
+*   **OneDrive MSAL Errors**: Verify that your Package Name and SHA-1 (Base64) Signature Hash in Microsoft Entra match your app build.
 
 ---
 
 ## ⚠️ Disclaimer
 
-This project is an independent open-source development. It is not officially endorsed by Google, Microsoft, or any other service provider mentioned. Users are responsible for ensuring compliance with each provider's Terms of Service.
+This project is an independent open-source development. It is not officially endorsed by Google, Microsoft, Dropbox, Box, or any other service provider mentioned. Users are responsible for ensuring compliance with each provider's Terms of Service.
 
 ---
 

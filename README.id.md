@@ -27,15 +27,10 @@
 ## 📌 Daftar Isi
 - [✨ Fitur Utama](#-fitur-utama)
 - [📷 Tangkapan Layar](#-screenshots)
-- [☁️ Provider yang Didukung](#️-provider-yang-didukung)
+- [☁️ Provider yang Didukung & Panduan Setup](#️-provider-yang-didukung--panduan-setup)
 - [📁 Arsitektur & Teknologi](#-arsitektur--teknologi)
 - [🚀 Memulai](#-memulai)
-  - [Prasyarat](#prasyarat)
-  - [Instalasi](#instalasi)
-  - [Panduan Setup](#panduan-setup)
 - [🛠️ Panduan Pengembang](#️-panduan-pengembang)
-  - [Struktur Proyek](#struktur-proyek)
-  - [Membangun dari Sumber](#membangun-dari-sumber)
 - [⚙️ Troubleshooting](#️-troubleshooting)
 - [⚠️ Disclaimer](#️-disclaimer)
 - [📄 Lisensi](#-lisensi)
@@ -44,10 +39,10 @@
 
 ## ✨ Fitur Utama
 
-*   **🔀 Manajemen Cloud Terpadu**: Hubungkan dan navigasi berbagai akun cloud (Google Drive, OneDrive, dll.) dari satu antarmuka yang intuitif.
+*   **🔀 Manajemen Cloud Terpadu**: Hubungkan dan navigasi berbagai akun cloud (Google Drive, OneDrive, Dropbox, Box, WebDAV, SFTP) dari satu antarmuka yang intuitif.
 *   **📤 Perutean Cerdas**: Distribusikan unggahan secara otomatis di seluruh provider berdasarkan strategi cerdas seperti "Ruang Kosong Terbanyak" atau "Round Robin".
 *   **📂 Explorer File Profesional**: Manajer file lengkap dengan fitur multi-seleksi, aksi batch, pratinjau PDF internal, dan integrasi aplikasi native.
-*   **🔗 Berbagi & Kolaborasi Native**: Bagikan file menggunakan fitur kolaborasi asli provider, termasuk menambahkan orang melalui email dan mengatur perizinan.
+*   **🔄 Cadangan Otomatis Latar Belakang**: Sinkronisasi folder otomatis di latar belakang menggunakan **Android Foreground Services**.
 *   **🔒 Penyimpanan Kredensial Aman**: Menggunakan **EncryptedSharedPreferences** Android untuk menyimpan token OAuth dan kredensial server dengan aman.
 *   **🎨 Desain Material 3**: UI yang sepenuhnya responsif dengan dukungan Dynamic Color, mode Gelap/Terang, dan dukungan bilingual (EN/ID).
 
@@ -55,23 +50,28 @@
 
 ## 📷 Tangkapan Layar
 
-| | | |
+| Pengelola File Beranda | Menu Navigasi | Cadangan Otomatis |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/files.png" width="230" alt="File Explorer"/><br/>**Explorer File** | <img src="docs/screenshots/accounts.png" width="230" alt="Multi-Account"/><br/>**Manajemen Akun** | <img src="docs/screenshots/preview.png" width="230" alt="PDF Preview"/><br/>**Pratinjau PDF** |
-| <img src="docs/screenshots/sharing.png" width="230" alt="Native Sharing"/><br/>**UI Berbagi Native** | <img src="docs/screenshots/selection.png" width="230" alt="Multi-Select"/><br/>**Mode Multi-Seleksi** | <img src="docs/screenshots/settings.png" width="230" alt="Settings"/><br/>**Pengaturan & Strategi** |
+| <img src="docs/screenshots/home.jpg" width="240" alt="Pengelola File Beranda"/><br/>**Pengelola File Beranda** | <img src="docs/screenshots/drawer.jpg" width="240" alt="Menu Navigasi"/><br/>**Menu Navigasi** | <img src="docs/screenshots/backup.jpg" width="240" alt="Cadangan Otomatis"/><br/>**Cadangan Otomatis** |
+
+| Strategi Unggah | Akun Cloud | Unggah File |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/strategy.jpg" width="240" alt="Strategi Unggah"/><br/>**Strategi Unggah** | <img src="docs/screenshots/account.jpg" width="240" alt="Akun Cloud"/><br/>**Akun Cloud** | <img src="docs/screenshots/upload.jpg" width="240" alt="Unggah File"/><br/>**Unggah File** |
 
 ---
 
-## ☁️ Provider yang Didukung
+## ☁️ Provider yang Didukung & Panduan Setup
 
-| Provider | Koneksi | Fitur |
-| :--- | :---: | :--- |
-| **Google Drive** | OAuth 2.0 | Berbagi Native, Sinkronisasi, Kuota |
-| **OneDrive** | OAuth 2.0 | Berbagi Native, Sinkronisasi, Kuota |
-| **Dropbox** | OAuth 2.0 | Jelajah File, Berbagi Dasar |
-| **Box** | OAuth 2.0 | Jelajah File, Berbagi Dasar |
-| **WebDAV** | Basic Auth | Dukungan Multi-Akun |
-| **SFTP (SSH)** | Password | Akses Remote Aman |
+Di aplikasi Android, buka **Pengaturan → Pengaturan Provider Cloud** untuk melihat detail identitas aplikasi Anda (**Nama Paket**, **SHA-1 (HEX)**, **SHA-1 (Base64)**, dan **Redirect URI**) lengkap dengan tombol salin 1-klik.
+
+| Provider | Tipe | Link Konsol Provider | Panduan Setup & Alur Kredensial |
+| :--- | :---: | :--- | :--- |
+| **Google Drive** | OAuth 2.0 | [Google Cloud Console](https://console.cloud.google.com/) | **1.** Buat **OAuth Client ID #1 (Web application)** -> Salin Client ID ke Pengaturan Aplikasi.<br/>**2.** Buat **OAuth Client ID #2 (Android)** -> Daftarkan **Nama Paket** & **SHA-1 (HEX)** dari Pengaturan Aplikasi. |
+| **OneDrive** | OAuth 2.0 | [Microsoft Entra](https://entra.microsoft.com/) | **1.** Daftarkan Aplikasi di Entra admin center.<br/>**2.** Pada menu *Authentication*, tambahkan **Platform Android** dengan **Nama Paket** & Signature Hash **SHA-1 (Base64)**.<br/>**3.** Salin **Application (client) ID** ke Pengaturan Aplikasi. |
+| **Dropbox** | OAuth 2.0 | [Dropbox Console](https://www.dropbox.com/developers/apps) | **1.** Buat aplikasi dengan Scoped Access (`files.content.read/write`).<br/>**2.** Daftarkan Redirect URI: `awd-driverouter://dropbox-auth`<br/>**3.** Salin **App Key** ke Pengaturan Aplikasi. |
+| **Box** | OAuth 2.0 | [Box Console](https://app.box.com/developers/console) | **1.** Buat Custom App (User Authentication OAuth 2.0).<br/>**2.** Daftarkan Redirect URI: `awd-driverouter://box-auth`<br/>**3.** Salin **Client ID** & **Client Secret** ke Pengaturan Aplikasi. |
+| **WebDAV** | Protokol | - | Koneksi langsung. Masukkan **URL Server**, **Username**, dan **Password** langsung di dialog *Connect Account*. |
+| **SFTP (SSH)** | Protokol | - | Koneksi langsung. Masukkan **Host/IP**, **Port** (default 22), **Username**, dan **Password** di dialog *Connect Account*. |
 
 ---
 
@@ -91,15 +91,11 @@
 
 ### Prasyarat
 *   Perangkat Android yang menjalankan Android 8.0 (API 26) atau lebih tinggi.
-*   Kredensial API provider cloud (untuk setup Google/OneDrive).
+*   Kredensial API provider cloud (untuk Google, OneDrive, Dropbox, atau Box).
 
 ### Instalasi
 1. Unduh APK terbaru dari halaman [Releases](https://github.com/putuwahyu29/awd-driverouter-android/releases).
 2. Instal APK di perangkat Anda (pastikan "Instal dari Sumber Tidak Dikenal" diaktifkan).
-
-### Panduan Setup
-*   **OAuth Providers**: Buka **Pengaturan**, konfigurasikan Client ID Anda, lalu buka **Akun** untuk menghubungkan.
-*   **WebDAV/SFTP**: Login langsung melalui layar **Akun** menggunakan detail server Anda.
 
 ---
 
@@ -116,6 +112,7 @@ awd-driverouter-android/
 │   │   ├── ui/             # Layar dan viewmodel Jetpack Compose
 │   │   └── util/           # Utilitas pemformatan dan pembantu
 │   └── build.gradle.kts    # Dependensi modul
+├── docs/screenshots/       # Gambar tangkapan layar untuk dokumentasi
 ├── gradle/                 # Gradle wrapper
 └── README.md               # Dokumentasi Bahasa Inggris
 ```
@@ -135,15 +132,15 @@ awd-driverouter-android/
 
 ## ⚙️ Troubleshooting
 
-*   **Masalah Callback OAuth**: Pastikan URI pengalihan di konsol provider Anda cocok dengan konfigurasi Anda.
-*   **Kesalahan Kuota Penyimpanan**: Beberapa server WebDAV mungkin tidak melaporkan kuota dengan benar.
-*   **Pemuatan PDF**: File PDF berukuran besar mungkin membutuhkan beberapa detik untuk dirender pada perangkat lama.
+*   **Masalah Callback OAuth**: Pastikan URI pengalihan skema kustom (`awd-driverouter://dropbox-auth` atau `awd-driverouter://box-auth`) terdaftar di konsol provider Anda.
+*   **Kesalahan Google Drive Error 10**: Pastikan fingerprint SHA-1 (HEX) dan Nama Paket di Google Cloud Console persis sama dengan tanda tangan APK Anda.
+*   **Kesalahan OneDrive MSAL**: Pastikan Nama Paket dan Signature Hash SHA-1 (Base64) di Microsoft Entra cocok dengan build aplikasi Anda.
 
 ---
 
 ## ⚠️ Disclaimer
 
-Proyek ini adalah pengembangan open-source independen. Tidak didukung secara resmi oleh Google, Microsoft, atau penyedia layanan lain yang disebutkan. Pengguna bertanggung jawab untuk memastikan kepatuhan terhadap Ketentuan Layanan masing-masing provider.
+Proyek ini adalah pengembangan open-source independen. Tidak didukung secara resmi oleh Google, Microsoft, Dropbox, Box, atau penyedia layanan lain yang disebutkan. Pengguna bertanggung jawab untuk memastikan kepatuhan terhadap Ketentuan Layanan masing-masing provider.
 
 ---
 
