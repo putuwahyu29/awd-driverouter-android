@@ -103,6 +103,8 @@ class AccountsViewModel @Inject constructor(
 
     fun getAppSHA1Base64(): String = SignatureHelper.getSHA1Base64(context)
 
+    fun getMSALSignatureHash(): String = SignatureHelper.getMSALSignatureHash(context)
+
     fun startGoogleSignIn(onReady: (Intent) -> Unit) {
         _isLoggingIn.value = true
         // Force sign out to ensure account picker appears for multi-account support

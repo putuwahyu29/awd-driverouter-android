@@ -47,6 +47,20 @@
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
+        <!-- MSAL Redirect Activity -->
+        <activity
+            android:name="com.microsoft.identity.client.BrowserTabActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="msauth"
+                    android:host="com.awd.driverouter" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 

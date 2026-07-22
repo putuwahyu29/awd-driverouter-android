@@ -492,12 +492,27 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(24.dp).navigationBarsPadding().verticalScroll(rememberScrollState())) {
-        val title = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account_title, provider.uppercase()) else stringResource(R.string.configure_provider, provider.replaceFirstChar { it.uppercase() })
+        val providerName = when (provider) {
+            "google" -> stringResource(R.string.google_drive)
+            "onedrive" -> stringResource(R.string.onedrive)
+            "dropbox" -> stringResource(R.string.dropbox)
+            "box" -> stringResource(R.string.box)
+            "webdav" -> stringResource(R.string.webdav)
+            "sftp" -> stringResource(R.string.sftp)
+            else -> provider.replaceFirstChar { it.uppercase() }
+        }
+        
+        val title = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account_title, providerName) else stringResource(R.string.configure_provider, providerName)
         Text(text = title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
         
         if (provider == "google" || provider == "onedrive") {
-            AppIdentitySection(viewModel.getPackageName(), viewModel.getAppSHA1(), viewModel.getAppSHA1Base64())
+            AppIdentitySection(
+                packageName = viewModel.getPackageName(), 
+                sha1 = viewModel.getAppSHA1(), 
+                sha1Base64 = viewModel.getAppSHA1Base64(),
+                msalHash = viewModel.getMSALSignatureHash()
+            )
             Spacer(modifier = Modifier.height(16.dp))
         }
         
@@ -619,7 +634,7 @@ fun ConfigGuideSection(provider: String) {
 }
 
 @Composable
-fun AppIdentitySection(packageName: String, sha1: String, sha1Base64: String) {
+fun AppIdentitySection(packageName: String, sha1: String, sha1Base64: String, msalHash: String) {
     val context = LocalContext.current
     Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = MaterialTheme.shapes.medium) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -634,6 +649,8 @@ fun AppIdentitySection(packageName: String, sha1: String, sha1Base64: String) {
             IdentityItem(stringResource(R.string.sha1_fingerprint), sha1, context)
             Spacer(modifier = Modifier.height(8.dp))
             IdentityItem(stringResource(R.string.sha1_base64_fingerprint), sha1Base64, context)
+            Spacer(modifier = Modifier.height(8.dp))
+            IdentityItem(stringResource(R.string.msal_signature_hash), msalHash, context)
         }
     }
 }

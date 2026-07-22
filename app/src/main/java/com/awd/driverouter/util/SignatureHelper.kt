@@ -68,4 +68,37 @@ object SignatureHelper {
             "Error"
         }
     }
+
+    /**
+     * MSAL (Azure) requires the signature hash in a specific format for the Redirect URI.
+     * This is SHA-1 binary -> Base64 -> URL Encoded.
+     */
+    fun getMSALSignatureHash(context: Context): String {
+        return try {
+            val packageName = context.packageName
+            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val packageInfo = context.packageManager.getPackageInfo(
+                    packageName,
+                    PackageManager.GET_SIGNING_CERTIFICATES
+                )
+                packageInfo.signingInfo.apkContentsSigners
+            } else {
+                val packageInfo = context.packageManager.getPackageInfo(
+                    packageName,
+                    PackageManager.GET_SIGNATURES
+                )
+                packageInfo.signatures
+            }
+
+            val md = MessageDigest.getInstance("SHA1")
+            val digest = md.digest(signatures[0].toByteArray())
+            // Azure usually uses standard Base64 for the registration, 
+            // but the Redirect URI itself might need to be URL encoded if it contains special chars.
+            // However, MSAL Android library handles the scheme msauth://<pkg>/<base64>
+            android.util.Base64.encodeToString(digest, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "Error"
+        }
+    }
 }

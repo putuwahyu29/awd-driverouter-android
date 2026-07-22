@@ -138,7 +138,7 @@
     <string name="redirect_uri_msauth_label">Redirect URI (msauth://...)</string>
 
     <string name="google_guide">1. Open Google Cloud Console.\n2. Enable Drive API.\n3. Create OAuth 2.0 Client ID (Web Application).\n4. Copy \'Client ID\' to the field below.</string>
-    <string name="onedrive_guide">1. Open Azure Portal -> App Registrations.\n2. Copy \'Application (client) ID\'.\n3. In \'Authentication\', add Android platform with Package &amp; SHA1 above.</string>
+    <string name="onedrive_guide">1. Open Azure Portal -> App Registrations.\n2. Copy \'Application (client) ID\'.\n3. In \'Authentication\', add Android platform with Package &amp; MSAL Signature Hash above.</string>
     <string name="dropbox_guide">1. Open Dropbox App Console.\n2. Create new App (Scoped access).\n3. Grant \'files.content.read/write\' permissions.\n4. Copy \'App Key\' below.</string>
     <string name="box_guide">1. Open Box Developer Console.\n2. Create Custom App (OAuth 2.0).\n3. Copy \'Client ID\' and \'Client Secret\' below.\n4. Set Redirect URI to \'http://localhost\'.</string>
     <string name="webdav_guide">1. Enter full WebDAV server URL.\n2. Enter Username and Password.\n3. Example Nextcloud: \'https://domain.com/remote.php/dav/files/user/\'</string>
@@ -209,6 +209,7 @@
     <string name="package_name">Package Name</string>
     <string name="sha1_fingerprint">SHA-1 Fingerprint (HEX)</string>
     <string name="sha1_base64_fingerprint">SHA-1 Fingerprint (Base64)</string>
+    <string name="msal_signature_hash">MSAL Signature Hash (for Azure)</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_system">System</string>
