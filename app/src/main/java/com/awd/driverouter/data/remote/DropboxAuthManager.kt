@@ -68,7 +68,7 @@ class DropboxAuthManager @Inject constructor(
             val intent = Intent(Intent.ACTION_VIEW, uri)
             activity.startActivity(intent)
         } else {
-            android.widget.Toast.makeText(activity, "Dropbox App Key not configured.", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(activity, activity.getString(com.awd.driverouter.R.string.provider_not_configured, "Dropbox"), android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 

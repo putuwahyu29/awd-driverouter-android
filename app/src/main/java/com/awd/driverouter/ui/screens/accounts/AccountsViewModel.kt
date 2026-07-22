@@ -198,37 +198,10 @@ class AccountsViewModel @Inject constructor(
         dropboxAuthManager.startAuthentication(activity)
     }
 
-    fun boxSignIn(activity: Activity) {
-        _isLoggingIn.value = true
-        try {
-            boxAuthManager.getSession()?.authenticate(activity)?.addOnCompletedListener {
-                viewModelScope.launch {
-                    try {
-                        val boxUser = boxAuthManager.getSession()?.getUser()
-                        if (boxUser != null) {
-                            val entity = AccountEntity(
-                                id = boxUser.id,
-                                email = boxUser.login,
-                                displayName = boxUser.name,
-                                providerId = "box",
-                                usedSpace = 0,
-                                totalSpace = 0,
-                                isConnected = true
-                            )
-                            accountDao.insertAccount(entity)
-                            _statusMessage.emit(context.getString(R.string.account_added, context.getString(R.string.box)))
-                            launch { repository.syncFiles(null) }
-                        } else {
-                            _statusMessage.emit(context.getString(R.string.login_failed_provider, context.getString(R.string.box)))
-                        }
-                    } finally {
-                        _isLoggingIn.value = false
-                    }
-                }
-            } ?: run { _isLoggingIn.value = false }
-        } catch (e: Exception) {
-            _isLoggingIn.value = false
-        }
+    fun boxSignIn(context: Context) {
+        // Memulai OAuth2 flow: buka halaman login Box via Custom Tabs / browser.
+        // Proses dilanjutkan di MainActivity.handleBoxRedirect() saat callback redirect diterima.
+        boxAuthManager.startAuthentication(context)
     }
 
     fun webDavSignIn(url: String, user: String, pass: String, displayName: String) {

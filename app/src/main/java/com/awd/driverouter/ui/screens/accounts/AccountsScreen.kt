@@ -161,7 +161,7 @@ fun AccountsScreen(
                     name = stringResource(R.string.box),
                     accounts = accounts.filter { it.provider == "box" },
                     isEnabled = providerValidation["box"] ?: false,
-                    onAddClick = { context.findActivity()?.let { viewModel.boxSignIn(it) } },
+                    onAddClick = { viewModel.boxSignIn(context) },
                     onRemoveAccount = { accountToRemove = it },
                     onConfigClick = { selectedProviderForConfig = "box"; showSheet = true }
                 )
@@ -298,7 +298,7 @@ fun FormTextField(
         ) {
             Icon(
                 imageVector = Icons.Default.ContentPaste,
-                contentDescription = "Paste",
+                contentDescription = stringResource(R.string.paste),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -332,7 +332,6 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
         else -> "" 
     }
     val field3Label = when (provider) {
-        "box" -> stringResource(R.string.redirect_uri_label)
         "webdav" -> stringResource(R.string.password_label)
         "sftp" -> stringResource(R.string.password_label)
         else -> ""
@@ -356,7 +355,6 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
         else -> ""
     }
     val key3 = when (provider) {
-        "box" -> CredentialManager.BOX_REDIRECT_URI 
         "webdav" -> CredentialManager.WEBDAV_PASS
         "sftp" -> CredentialManager.SFTP_PASS
         else -> ""
@@ -398,7 +396,7 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
         ConfigGuideSection(provider)
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (provider == "dropbox" && field1.isNotEmpty()) {
+        if ((provider == "dropbox" || provider == "box") && field1.isNotEmpty()) {
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                 shape = MaterialTheme.shapes.medium,
@@ -406,12 +404,12 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Must add this Redirect URI in Dropbox Console:",
+                        text = stringResource(R.string.redirect_uri_notice, if (provider == "box") "Box" else "Dropbox"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val redirectUri = "awd-driverouter://dropbox-auth"
+                        val redirectUri = if (provider == "box") "awd-driverouter://box-auth" else "awd-driverouter://dropbox-auth"
                         Text(
                             text = redirectUri,
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
@@ -419,7 +417,7 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
                         )
                         IconButton(onClick = {
                             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Redirect URI", redirectUri))
-                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.copied_to_clipboard, redirectUri), Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
                         }

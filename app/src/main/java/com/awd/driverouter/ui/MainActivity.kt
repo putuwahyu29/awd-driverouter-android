@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
+import com.awd.driverouter.R
 import com.awd.driverouter.data.local.AppTheme
 import com.awd.driverouter.data.local.SettingsManager
 import com.awd.driverouter.ui.screens.MainScreen
@@ -38,6 +39,9 @@ class MainActivity : AppCompatActivity() {
     lateinit var dropboxAuthManager: com.awd.driverouter.data.remote.DropboxAuthManager
 
     @Inject
+    lateinit var boxAuthManager: com.awd.driverouter.data.remote.BoxAuthManager
+
+    @Inject
     lateinit var repository: com.awd.driverouter.domain.repository.CloudRepository
 
     @Inject
@@ -54,6 +58,7 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleDropboxRedirect(intent)
+        handleBoxRedirect(intent)
     }
 
     private fun handleDropboxRedirect(intent: Intent) {
@@ -91,8 +96,62 @@ class MainActivity : AppCompatActivity() {
                         launch { repository.syncFiles(null) }
                         launch { repository.syncQuota() }
                         
-                        android.widget.Toast.makeText(this@MainActivity, "Dropbox Connected: ${entity.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(this@MainActivity, getString(R.string.account_added, entity.displayName), android.widget.Toast.LENGTH_SHORT).show()
                     }
+                }
+            }
+        }
+    }
+
+    private fun handleBoxRedirect(intent: Intent) {
+        intent.data?.let { uri ->
+            val code = boxAuthManager.handleAuthRedirect(uri) ?: return@let
+            lifecycleScope.launch {
+                try {
+                    // Tukar authorization code dengan access token
+                    val api = boxAuthManager.exchangeCodeForToken(code)
+                    if (api != null) {
+                        // Ambil info user dari Box API menggunakan connection yang baru dibuat
+                        val userInfo = boxAuthManager.getCurrentUser(api)
+                        val accountId = userInfo?.id ?: "box_${System.currentTimeMillis()}"
+                        
+                        // Simpan token menggunakan accountId yang benar
+                        boxAuthManager.finalizeAuth(accountId, api)
+
+                        val entity = com.awd.driverouter.data.local.AccountEntity(
+                            id = accountId,
+                            email = userInfo?.login ?: "Box User",
+                            displayName = userInfo?.name ?: "Box",
+                            providerId = "box",
+                            usedSpace = 0,
+                            totalSpace = 0,
+                            isConnected = true
+                        )
+                        accountDao.insertAccount(entity)
+
+                        // Sync quota & files di background
+                        launch { repository.syncFiles(null) }
+                        launch { repository.syncQuota() }
+
+                        android.widget.Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.account_added, entity.displayName),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        android.widget.Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.login_failed_provider, "Box"),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Box auth error: ${e.message}", e)
+                    android.widget.Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.login_failed, e.message ?: ""),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -102,6 +161,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         
         handleDropboxRedirect(intent)
+        handleBoxRedirect(intent)
         checkNotificationPermission()
 
         setContent {

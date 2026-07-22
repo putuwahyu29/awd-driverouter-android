@@ -146,7 +146,7 @@ class CloudRepositoryImpl @Inject constructor(
                         try {
                             var hasClearedCache = false
                             
-                            val files = withTimeoutOrNull(45000L) { // Increased timeout for multi-page sync
+                            val files = withTimeoutOrNull(15000L) { // 15s timeout per account sync
                                 val fetchedResult = fetcher(provider, account) { partialFiles ->
                                     // Incremental Insertion - make it synchronous with the fetching process
                                     if (!hasClearedCache) {

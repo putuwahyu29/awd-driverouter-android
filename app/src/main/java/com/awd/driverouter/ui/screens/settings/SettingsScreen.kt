@@ -40,8 +40,8 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.message.collect { msg ->
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        viewModel.message.collect { resId ->
+            Toast.makeText(context, context.getString(resId), Toast.LENGTH_SHORT).show()
         }
     }
 

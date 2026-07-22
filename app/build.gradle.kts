@@ -150,7 +150,8 @@ dependencies {
     implementation(libs.dropbox)
 
     // Box
-    implementation(libs.box)
+    implementation(libs.box.java.sdk)
+    implementation(libs.androidx.browser)
 
     // New Providers
     implementation(libs.sardine.android)

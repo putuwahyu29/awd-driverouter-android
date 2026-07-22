@@ -22,7 +22,8 @@ googleApiClient = "2.2.0"
 msal = "5.1.0"
 microsoftGraph = "5.80.0"
 dropbox = "5.1.1"
-box = "5.0.0"
+boxJavaSdk = "4.11.1"
+browser = "1.8.0"
 securityCrypto = "1.1.0"
 biometric = "1.2.0-alpha05"
 documentfile = "1.0.1"
@@ -87,7 +88,8 @@ google-api-client-android = { group = "com.google.api-client", name = "google-ap
 msal = { group = "com.microsoft.identity.client", name = "msal", version.ref = "msal" }
 microsoft-graph = { group = "com.microsoft.graph", name = "microsoft-graph", version.ref = "microsoftGraph" }
 dropbox = { group = "com.dropbox.core", name = "dropbox-core-sdk", version.ref = "dropbox" }
-box = { group = "com.box", name = "box-android-sdk", version.ref = "box" }
+box-java-sdk = { group = "com.box", name = "box-java-sdk", version.ref = "boxJavaSdk" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }

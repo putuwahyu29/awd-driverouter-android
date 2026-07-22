@@ -141,9 +141,12 @@
     <string name="google_guide">1. Open Google Cloud Console.\n2. Enable Drive API.\n3. Create OAuth 2.0 Client ID (Web Application).\n4. Copy \'Client ID\' to the field below.</string>
     <string name="onedrive_guide">1. Open Azure Portal -> App Registrations.\n2. Copy \'Application (client) ID\'.\n3. In \'Authentication\', add Android platform with Package &amp; MSAL Signature Hash above.</string>
     <string name="dropbox_guide">1. Open Dropbox App Console.\n2. Create new App (Scoped access).\n3. Grant \'files.content.read/write\' permissions.\n4. Copy \'App Key\' below.</string>
-    <string name="box_guide">1. Open Box Developer Console.\n2. Create Custom App (OAuth 2.0).\n3. Copy \'Client ID\' and \'Client Secret\' below.\n4. Set Redirect URI to \'http://localhost\'.</string>
+    <string name="box_guide">1. Open Box Developer Console.\n2. Create Custom App (OAuth 2.0).\n3. Copy \'Client ID\' and \'Client Secret\' below.\n4. Add Redirect URI: \'awd-driverouter://box-auth\'.</string>
     <string name="webdav_guide">1. Enter full WebDAV server URL.\n2. Enter Username and Password.\n3. Example Nextcloud: \'https://domain.com/remote.php/dav/files/user/\'</string>
     <string name="sftp_guide">1. Enter Server IP or Host address.\n2. Enter Port (default: 22).\n3. Enter SSH Username and Password.</string>
+    <string name="paste">Paste</string>
+    <string name="redirect_uri_notice">Must add this Redirect URI in %1$s Console:</string>
+    <string name="provider_not_configured">%1$s credentials are not configured yet.</string>
 
     <string name="to_cloud">To Cloud: %1$s</string>
     <string name="default_folder_name">Folder</string>
@@ -229,6 +232,8 @@
     <string name="security">Security</string>
     <string name="app_lock">App Lock</string>
     <string name="app_lock_desc">Secure app with Biometric/PIN</string>
+    <string name="app_lock_enabled">App lock enabled</string>
+    <string name="app_lock_disabled">App lock disabled</string>
     <string name="backup">Backup</string>
     <string name="auto_backup">Auto Backup</string>
     <string name="backup_wifi_only">WiFi Only</string>

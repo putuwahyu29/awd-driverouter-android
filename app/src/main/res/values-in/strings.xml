@@ -135,9 +135,12 @@
     <string name="google_guide">1. Buka Google Cloud Console.\n2. Aktifkan Drive API.\n3. Buat OAuth 2.0 Client ID (Web Application).\n4. Salin \'Client ID\' ke kolom di bawah ini.</string>
     <string name="onedrive_guide">1. Buka Azure Portal -> App Registrations.\n2. Salin \'Application (client) ID\'.\n3. Di \'Authentication\', tambahkan platform Android dengan Nama Paket &amp; MSAL Signature Hash di atas.</string>
     <string name="dropbox_guide">1. Buka Dropbox App Console.\n2. Buat App baru (Scoped access).\n3. Berikan izin \'files.content.read/write\'.\n4. Salin \'App Key\' di bawah.</string>
-    <string name="box_guide">1. Buka Box Developer Console.\n2. Buat Custom App (OAuth 2.0).\n3. Salin \'Client ID\' dan \'Client Secret\' ke kolom di bawah.\n4. Set Redirect URI ke \'http://localhost\'.</string>
+    <string name="box_guide">1. Buka Box Developer Console.\n2. Buat Custom App (OAuth 2.0).\n3. Salin \'Client ID\' dan \'Client Secret\' ke kolom di bawah.\n4. Tambahkan Redirect URI: \'awd-driverouter://box-auth\'.</string>
     <string name="webdav_guide">1. Masukkan URL server WebDAV lengkap.\n2. Masukkan Username dan Password.\n3. Contoh Nextcloud: \'https://domain.com/remote.php/dav/files/user/\'</string>
     <string name="sftp_guide">1. Masukkan alamat IP atau Host server.\n2. Masukkan Port (default: 22).\n3. Masukkan Username dan Password SSH.</string>
+    <string name="paste">Tempel</string>
+    <string name="redirect_uri_notice">Wajib menambahkan Redirect URI ini di Console %1$s:</string>
+    <string name="provider_not_configured">Kredensial %1$s belum dikonfigurasi.</string>
 
     <string name="to_cloud">Ke Cloud: %1$s</string>
     <string name="default_folder_name">Folder</string>
@@ -223,6 +226,8 @@
     <string name="security">Keamanan</string>
     <string name="app_lock">Kunci Aplikasi</string>
     <string name="app_lock_desc">Amankan aplikasi dengan Biometrik/PIN</string>
+    <string name="app_lock_enabled">Kunci aplikasi diaktifkan</string>
+    <string name="app_lock_disabled">Kunci aplikasi dinonaktifkan</string>
     <string name="backup">Cadangan</string>
     <string name="auto_backup">Cadangan Otomatis</string>
     <string name="backup_wifi_only">Hanya WiFi</string>

@@ -23,7 +23,7 @@ class SettingsViewModel @Inject constructor(
     
     val isAppLockEnabled: StateFlow<Boolean> = settingsManager.isAppLockEnabled
 
-    private val _message = kotlinx.coroutines.flow.MutableSharedFlow<String>()
+    private val _message = kotlinx.coroutines.flow.MutableSharedFlow<Int>()
     val message = _message.asSharedFlow()
 
     fun setTheme(theme: AppTheme) {
@@ -41,7 +41,7 @@ class SettingsViewModel @Inject constructor(
     fun setAppLockEnabled(enabled: Boolean) {
         settingsManager.setAppLockEnabled(enabled)
         viewModelScope.launch {
-            _message.emit(if (enabled) "Kunci aplikasi diaktifkan" else "Kunci aplikasi dinonaktifkan")
+            _message.emit(if (enabled) com.awd.driverouter.R.string.app_lock_enabled else com.awd.driverouter.R.string.app_lock_disabled)
         }
     }
 }
