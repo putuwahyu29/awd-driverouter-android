@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,10 +36,21 @@ import com.awd.driverouter.data.local.CredentialManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.util.formatSize
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-
 import com.google.android.gms.common.api.ApiException
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AccountsScreen(
     onBack: () -> Unit,
@@ -51,7 +61,6 @@ fun AccountsScreen(
     val providerValidation by viewModel.providerValidation.collectAsState()
     
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     var selectedProviderForConfig by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
@@ -102,9 +111,7 @@ fun AccountsScreen(
                 }
             )
         }
-
     ) { innerPadding ->
-
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
@@ -163,7 +170,7 @@ fun AccountsScreen(
                     providerId = "webdav",
                     name = stringResource(R.string.webdav),
                     accounts = accounts.filter { it.provider == "webdav" },
-                    isEnabled = true, // WebDAV directly prompts for login
+                    isEnabled = true, 
                     onAddClick = { selectedProviderForConfig = "webdav"; showSheet = true },
                     onRemoveAccount = { accountToRemove = it },
                     onConfigClick = { selectedProviderForConfig = "webdav"; showSheet = true }
@@ -173,13 +180,12 @@ fun AccountsScreen(
                     providerId = "sftp",
                     name = stringResource(R.string.sftp),
                     accounts = accounts.filter { it.provider == "sftp" },
-                    isEnabled = true, // SFTP directly prompts for login
+                    isEnabled = true, 
                     onAddClick = { selectedProviderForConfig = "sftp"; showSheet = true },
                     onRemoveAccount = { accountToRemove = it },
                     onConfigClick = { selectedProviderForConfig = "sftp"; showSheet = true }
                 )
 
-                
                 Spacer(modifier = Modifier.height(32.dp))
             }
 
@@ -219,9 +225,282 @@ fun AccountsScreen(
     }
 
     if (showSheet && selectedProviderForConfig != null) {
-        ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false }, 
+            sheetState = sheetState,
+            windowInsets = WindowInsets.ime
+        ) {
             ConfigSheetContent(selectedProviderForConfig!!, { showSheet = false }, viewModel)
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun FormTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String = "",
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    modifier: Modifier = Modifier
+) {
+    val clipboardManager = LocalClipboardManager.current
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(label) },
+            placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
+            modifier = Modifier
+                .weight(1f)
+                .bringIntoViewRequester(bringIntoViewRequester)
+                .onFocusChanged { 
+                    if (it.isFocused) {
+                        scope.launch { 
+                            delay(300.milliseconds)
+                            bringIntoViewRequester.bringIntoView() 
+                        }
+                    }
+                },
+            shape = MaterialTheme.shapes.medium,
+            singleLine = true,
+            visualTransformation = visualTransformation,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = keyboardType,
+                imeAction = imeAction
+            ),
+            trailingIcon = {
+                if (value.isNotEmpty()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(Icons.Default.Clear, null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        )
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        FilledTonalIconButton(
+            onClick = {
+                scope.launch {
+                    val text = clipboardManager.getText()?.text ?: ""
+                    if (text.isNotEmpty()) onValueChange(text)
+                }
+            },
+            modifier = Modifier.size(48.dp),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Icon(
+                imageVector = Icons.Default.ContentPaste,
+                contentDescription = "Paste",
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: AccountsViewModel) {
+    var field1 by remember { mutableStateOf("") }
+    var field2 by remember { mutableStateOf("") }
+    var field3 by remember { mutableStateOf("") }
+    var field4 by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
+    
+    val context = LocalContext.current
+
+    val label1 = when (provider) { 
+        "google" -> stringResource(R.string.client_id_web_label)
+        "onedrive" -> stringResource(R.string.client_id_app_label)
+        "dropbox" -> stringResource(R.string.app_key_label)
+        "box" -> stringResource(R.string.client_id_label)
+        "webdav" -> stringResource(R.string.server_url_label)
+        "sftp" -> stringResource(R.string.host_address_label)
+        else -> "" 
+    }
+    val label2 = when (provider) { 
+        "box" -> stringResource(R.string.client_secret_label)
+        "onedrive" -> stringResource(R.string.redirect_uri_msauth_label)
+        "webdav" -> stringResource(R.string.username_label)
+        "sftp" -> stringResource(R.string.username_label)
+        else -> "" 
+    }
+    val field3Label = when (provider) {
+        "box" -> stringResource(R.string.redirect_uri_label)
+        "webdav" -> stringResource(R.string.password_label)
+        "sftp" -> stringResource(R.string.password_label)
+        else -> ""
+    }
+    val field4Label = if (provider == "sftp") stringResource(R.string.port_label) else ""
+
+    val key1 = when (provider) { 
+        "google" -> CredentialManager.GOOGLE_CLIENT_ID 
+        "onedrive" -> CredentialManager.ONEDRIVE_CLIENT_ID 
+        "dropbox" -> CredentialManager.DROPBOX_APP_KEY 
+        "box" -> CredentialManager.BOX_CLIENT_ID 
+        "webdav" -> CredentialManager.WEBDAV_URL
+        "sftp" -> CredentialManager.SFTP_HOST
+        else -> "" 
+    }
+    val key2 = when (provider) {
+        "box" -> CredentialManager.BOX_CLIENT_SECRET 
+        "onedrive" -> CredentialManager.ONEDRIVE_REDIRECT_URI 
+        "webdav" -> CredentialManager.WEBDAV_USER
+        "sftp" -> CredentialManager.SFTP_USER
+        else -> ""
+    }
+    val key3 = when (provider) {
+        "box" -> CredentialManager.BOX_REDIRECT_URI 
+        "webdav" -> CredentialManager.WEBDAV_PASS
+        "sftp" -> CredentialManager.SFTP_PASS
+        else -> ""
+    }
+    val key4 = if (provider == "sftp") CredentialManager.SFTP_PORT else ""
+
+    LaunchedEffect(provider) {
+        if (key1.isNotEmpty()) field1 = viewModel.getCredential(key1)
+        if (key2.isNotEmpty()) field2 = viewModel.getCredential(key2)
+        if (key3.isNotEmpty()) field3 = viewModel.getCredential(key3)
+        if (key4.isNotEmpty()) field4 = viewModel.getCredential(key4)
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(24.dp).imePadding().verticalScroll(rememberScrollState())) {
+        val providerName = when (provider) {
+            "google" -> stringResource(R.string.google_drive)
+            "onedrive" -> stringResource(R.string.onedrive)
+            "dropbox" -> stringResource(R.string.dropbox)
+            "box" -> stringResource(R.string.box)
+            "webdav" -> stringResource(R.string.webdav)
+            "sftp" -> stringResource(R.string.sftp)
+            else -> provider.replaceFirstChar { it.uppercase() }
+        }
+        
+        val title = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account_title, providerName) else stringResource(R.string.configure_provider, providerName)
+        Text(text = title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        if (provider == "google" || provider == "onedrive") {
+            AppIdentitySection(
+                packageName = viewModel.getPackageName(), 
+                sha1 = viewModel.getAppSHA1(), 
+                sha1Base64 = viewModel.getAppSHA1Base64(),
+                msalHash = viewModel.getMSALSignatureHash()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        
+        ConfigGuideSection(provider)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (provider == "dropbox" && field1.isNotEmpty()) {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Must add this Redirect URI in Dropbox Console:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val redirectUri = "awd-driverouter://dropbox-auth"
+                        Text(
+                            text = redirectUri,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = {
+                            (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Redirect URI", redirectUri))
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        }) {
+                            Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (provider == "webdav" || provider == "sftp") {
+            FormTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                label = stringResource(R.string.account_name_label),
+                placeholder = stringResource(R.string.account_name_placeholder)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (label1.isNotEmpty()) {
+            FormTextField(
+                value = field1, 
+                onValueChange = { field1 = it }, 
+                label = label1
+            )
+        }
+        if (label2.isNotEmpty()) { 
+            Spacer(modifier = Modifier.height(12.dp))
+            FormTextField(
+                value = field2, 
+                onValueChange = { field2 = it }, 
+                label = label2
+            ) 
+        }
+        if (field3Label.isNotEmpty()) { 
+            Spacer(modifier = Modifier.height(12.dp))
+            FormTextField(
+                value = field3, 
+                onValueChange = { field3 = it }, 
+                label = field3Label,
+                keyboardType = if (provider == "webdav" || provider == "sftp") KeyboardType.Password else KeyboardType.Text,
+                visualTransformation = if (provider == "webdav" || provider == "sftp") PasswordVisualTransformation() else VisualTransformation.None,
+                imeAction = if (field4Label.isNotEmpty()) ImeAction.Next else ImeAction.Done
+            ) 
+        }
+        if (field4Label.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            FormTextField(
+                value = field4, 
+                onValueChange = { field4 = it }, 
+                label = field4Label,
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = { 
+                if (provider == "webdav") {
+                    viewModel.webDavSignIn(field1, field2, field3, displayName)
+                } else if (provider == "sftp") {
+                    viewModel.sftpSignIn(field1, field4, field2, field3, displayName)
+                } else {
+                    if (key1.isNotEmpty()) viewModel.saveCredential(key1, field1)
+                    if (key2.isNotEmpty()) viewModel.saveCredential(key2, field2)
+                    if (key3.isNotEmpty()) viewModel.saveCredential(key3, field3)
+                    if (key4.isNotEmpty()) viewModel.saveCredential(key4, field4)
+                }
+                onDismiss() 
+            }, 
+            modifier = Modifier.fillMaxWidth(), 
+            shape = MaterialTheme.shapes.large
+        ) { 
+            val buttonText = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account) else stringResource(R.string.save_config)
+            Text(buttonText) 
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { 
+            Text(stringResource(R.string.cancel)) 
+        }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -246,7 +525,6 @@ fun ProviderSection(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(text = name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 
-                // Only show settings icon for providers that need pre-configuration (Google, OneDrive, etc.)
                 if (providerId != "webdav" && providerId != "sftp") {
                     IconButton(onClick = onConfigClick) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings), tint = MaterialTheme.colorScheme.outline)
@@ -281,7 +559,7 @@ fun ProviderSection(
             }
             if (!isEnabled) {
                 Text(
-                    text = stringResource(R.string.setup_guide), // Actually should be a more specific string
+                    text = stringResource(R.string.setup_guide), 
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 4.dp).align(Alignment.CenterHorizontally)
@@ -352,29 +630,37 @@ fun AccountStorageItem(account: CloudAccount, onRemove: (CloudAccount) -> Unit, 
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { account.usedPercentage },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(CircleShape),
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
-                color = if (account.usedPercentage > 0.9f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = stringResource(R.string.storage_used, formatSize(account.usedSpace), formatSize(account.totalSpace)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                    fontWeight = FontWeight.Medium
+            if (account.totalSpace > 0) {
+                LinearProgressIndicator(
+                    progress = { account.usedPercentage },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(CircleShape),
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    color = if (account.usedPercentage > 0.9f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        text = stringResource(R.string.storage_used, formatSize(account.usedSpace), formatSize(account.totalSpace)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "${(account.usedPercentage * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
                 Text(
-                    text = "${(account.usedPercentage * 100).toInt()}%",
+                    text = "Storage: Unlimited / Unknown",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
+                    color = MaterialTheme.colorScheme.outline
                 )
             }
         }
@@ -419,190 +705,6 @@ fun BrandIcon(providerId: String, size: androidx.compose.ui.unit.Dp) {
                 )
             }
         }
-    }
-}
-
-
-@Composable
-fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: AccountsViewModel) {
-
-    var field1 by remember { mutableStateOf("") }
-    var field2 by remember { mutableStateOf("") }
-    var field3 by remember { mutableStateOf("") }
-    var field4 by remember { mutableStateOf("") }
-    var displayName by remember { mutableStateOf("") }
-    
-    val context = LocalContext.current
-
-    val label1 = when (provider) { 
-        "google" -> stringResource(R.string.client_id_web_label)
-        "onedrive" -> stringResource(R.string.client_id_app_label)
-        "dropbox" -> stringResource(R.string.app_key_label)
-        "box" -> stringResource(R.string.client_id_label)
-        "webdav" -> stringResource(R.string.server_url_label)
-        "sftp" -> stringResource(R.string.host_address_label)
-        else -> "" 
-    }
-    val label2 = when (provider) { 
-        "box" -> stringResource(R.string.client_secret_label)
-        "onedrive" -> stringResource(R.string.redirect_uri_msauth_label)
-        "webdav" -> stringResource(R.string.username_label)
-        "sftp" -> stringResource(R.string.username_label)
-        else -> "" 
-    }
-    
-    val field3Label = when (provider) {
-        "box" -> stringResource(R.string.redirect_uri_label)
-        "webdav" -> stringResource(R.string.password_label)
-        "sftp" -> stringResource(R.string.password_label)
-        else -> ""
-    }
-
-    val field4Label = if (provider == "sftp") stringResource(R.string.port_label) else ""
-
-    val key1 = when (provider) { 
-        "google" -> CredentialManager.GOOGLE_CLIENT_ID 
-        "onedrive" -> CredentialManager.ONEDRIVE_CLIENT_ID 
-        "dropbox" -> CredentialManager.DROPBOX_APP_KEY 
-        "box" -> CredentialManager.BOX_CLIENT_ID 
-        "webdav" -> CredentialManager.WEBDAV_URL
-        "sftp" -> CredentialManager.SFTP_HOST
-        else -> "" 
-    }
-    val key2 = when (provider) {
-        "box" -> CredentialManager.BOX_CLIENT_SECRET 
-        "onedrive" -> CredentialManager.ONEDRIVE_REDIRECT_URI 
-        "webdav" -> CredentialManager.WEBDAV_USER
-        "sftp" -> CredentialManager.SFTP_USER
-        else -> ""
-    }
-    val key3 = when (provider) {
-        "box" -> CredentialManager.BOX_REDIRECT_URI 
-        "webdav" -> CredentialManager.WEBDAV_PASS
-        "sftp" -> CredentialManager.SFTP_PASS
-        else -> ""
-    }
-    val key4 = if (provider == "sftp") CredentialManager.SFTP_PORT else ""
-
-    LaunchedEffect(provider) {
-        if (key1.isNotEmpty()) field1 = viewModel.getCredential(key1)
-        if (key2.isNotEmpty()) field2 = viewModel.getCredential(key2)
-        if (key3.isNotEmpty()) field3 = viewModel.getCredential(key3)
-        if (key4.isNotEmpty()) field4 = viewModel.getCredential(key4)
-    }
-
-    Column(modifier = Modifier.fillMaxWidth().padding(24.dp).navigationBarsPadding().verticalScroll(rememberScrollState())) {
-        val providerName = when (provider) {
-            "google" -> stringResource(R.string.google_drive)
-            "onedrive" -> stringResource(R.string.onedrive)
-            "dropbox" -> stringResource(R.string.dropbox)
-            "box" -> stringResource(R.string.box)
-            "webdav" -> stringResource(R.string.webdav)
-            "sftp" -> stringResource(R.string.sftp)
-            else -> provider.replaceFirstChar { it.uppercase() }
-        }
-        
-        val title = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account_title, providerName) else stringResource(R.string.configure_provider, providerName)
-        Text(text = title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        if (provider == "google" || provider == "onedrive") {
-            AppIdentitySection(
-                packageName = viewModel.getPackageName(), 
-                sha1 = viewModel.getAppSHA1(), 
-                sha1Base64 = viewModel.getAppSHA1Base64(),
-                msalHash = viewModel.getMSALSignatureHash()
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        
-        ConfigGuideSection(provider)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (provider == "webdav" || provider == "sftp") {
-            OutlinedTextField(
-                value = displayName,
-                onValueChange = { displayName = it },
-                label = { Text(stringResource(R.string.account_name_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.account_name_placeholder)) }
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        if (label1.isNotEmpty()) {
-            OutlinedTextField(
-                value = field1, 
-                onValueChange = { field1 = it }, 
-                label = { Text(label1) }, 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
-            )
-        }
-        if (label2.isNotEmpty()) { 
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = field2, 
-                onValueChange = { field2 = it }, 
-                label = { Text(label2) }, 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
-            ) 
-        }
-        if (field3Label.isNotEmpty()) { 
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = field3, 
-                onValueChange = { field3 = it }, 
-                label = { Text(field3Label) }, 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.medium,
-                singleLine = provider != "webdav" && provider != "sftp",
-                visualTransformation = if (provider == "webdav" || provider == "sftp") androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None
-            ) 
-        }
-        if (field4Label.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = field4, 
-                onValueChange = { field4 = it }, 
-                label = { Text(field4Label) }, 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
-            )
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = { 
-                if (provider == "webdav") {
-                    viewModel.webDavSignIn(field1, field2, field3, displayName)
-                } else if (provider == "sftp") {
-                    viewModel.sftpSignIn(field1, field4, field2, field3, displayName)
-                } else {
-                    if (key1.isNotEmpty()) viewModel.saveCredential(key1, field1)
-                    if (key2.isNotEmpty()) viewModel.saveCredential(key2, field2)
-                    if (key3.isNotEmpty()) viewModel.saveCredential(key3, field3)
-                    if (key4.isNotEmpty()) viewModel.saveCredential(key4, field4)
-                }
-                
-                onDismiss() 
-            }, 
-            modifier = Modifier.fillMaxWidth(), 
-            shape = MaterialTheme.shapes.large
-        ) { 
-            val buttonText = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account) else stringResource(R.string.save_config)
-            Text(buttonText) 
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { 
-            Text(stringResource(R.string.cancel)) 
-        }
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -657,7 +759,6 @@ fun AppIdentitySection(packageName: String, sha1: String, sha1Base64: String, ms
 
 @Composable
 fun IdentityItem(label: String, value: String, context: Context) {
-    val scope = rememberCoroutineScope()
     Column {
         Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

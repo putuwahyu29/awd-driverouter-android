@@ -50,20 +50,28 @@ class CloudRepositoryImpl @Inject constructor(
         return dao.getSharedFilesWithAccount().map { entities -> entities.map { it.toDomain() } }
     }
 
-    override suspend fun syncFiles(folderId: String?): Result<List<CloudFile>> = syncAggregation { provider, account ->
-        provider.listFiles(account, folderId)
+    override fun getTrashedFiles(): Flow<List<CloudFile>> {
+        return dao.getTrashedFilesWithAccount().map { entities -> entities.map { it.toDomain() } }
     }
 
-    override suspend fun syncStarred(): Result<List<CloudFile>> = syncAggregation { provider, account ->
-        provider.listStarred(account)
+    override suspend fun syncFiles(folderId: String?): Result<List<CloudFile>> = syncAggregation(overriddenParentId = folderId, mode = "files") { provider, account, onPartial ->
+        provider.listFiles(account, folderId, onPartial)
     }
 
-    override suspend fun syncRecent(): Result<List<CloudFile>> = syncAggregation { provider, account ->
-        provider.listRecent(account)
+    override suspend fun syncStarred(): Result<List<CloudFile>> = syncAggregation(mode = "starred") { provider, account, onPartial ->
+        provider.listStarred(account, onPartial)
     }
 
-    override suspend fun syncShared(): Result<List<CloudFile>> = syncAggregation { provider, account ->
-        provider.listShared(account)
+    override suspend fun syncRecent(): Result<List<CloudFile>> = syncAggregation(mode = "recent") { provider, account, onPartial ->
+        provider.listRecent(account, onPartial)
+    }
+
+    override suspend fun syncShared(): Result<List<CloudFile>> = syncAggregation(mode = "shared") { provider, account, onPartial ->
+        provider.listShared(account, onPartial)
+    }
+
+    override suspend fun syncTrash(): Result<List<CloudFile>> = syncAggregation(mode = "trash") { provider, account, onPartial ->
+        provider.listTrashed(account, onPartial)
     }
 
     override suspend fun getFilesByAccount(folderId: String?, accountId: String): Result<List<CloudFile>> = withContext(Dispatchers.IO) {
@@ -74,9 +82,14 @@ class CloudRepositoryImpl @Inject constructor(
             val provider = providers.find { it.providerId == account.provider }
                 ?: return@withContext Result.failure(Exception("Provider not found"))
             
-            val files = provider.listFiles(account, folderId)
-            dao.insertFiles(files.map { it.toEntity() })
-            Result.success(files)
+            val result = provider.listFiles(account, folderId) { files ->
+                // Partial insert if needed
+                dao.insertFiles(files.map { it.toEntity() })
+            }
+            result.onSuccess { files ->
+                dao.insertFiles(files.map { it.toEntity() })
+            }
+            result
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -85,28 +98,45 @@ class CloudRepositoryImpl @Inject constructor(
     override suspend fun syncQuota(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val accounts = accountDao.getAllAccounts().first()
-            accounts.forEach { accountEntity ->
-                val account = accountEntity.toDomain()
-                val provider = providers.find { it.providerId == account.provider }
-                provider?.getQuota(account)?.onSuccess { quota ->
-                    accountDao.insertAccount(accountEntity.copy(
-                        usedSpace = quota.usedSpace,
-                        totalSpace = quota.totalSpace
-                    ))
-                } ?: run {
-                    Log.w("CloudRepository", "Quota sync failed or not supported for ${account.provider}")
+            accounts.map { accountEntity ->
+                async {
+                    val account = accountEntity.toDomain()
+                    val provider = providers.find { it.providerId == account.provider }
+                    try {
+                        withTimeoutOrNull(15000L) { // 15s timeout for quota
+                            provider?.getQuota(account)?.onSuccess { quota ->
+                                accountDao.insertAccount(accountEntity.copy(
+                                    usedSpace = quota.usedSpace,
+                                    totalSpace = quota.totalSpace
+                                ))
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w("CloudRepository", "Quota sync failed for ${account.email}: ${e.message}")
+                    }
                 }
-            }
+            }.awaitAll()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private suspend fun syncAggregation(fetcher: suspend (CloudProvider, CloudAccount) -> List<CloudFile>): Result<List<CloudFile>> = withContext(Dispatchers.IO) {
+    private suspend fun syncAggregation(
+        overriddenParentId: String? = null,
+        mode: String = "files",
+        fetcher: suspend (CloudProvider, CloudAccount, onPartial: suspend (List<CloudFile>) -> Unit) -> Result<List<CloudFile>>
+    ): Result<List<CloudFile>> = withContext(Dispatchers.IO) {
         try {
-            val accounts = accountDao.getAllAccounts().first()
+            var accounts = accountDao.getAllAccounts().first()
             if (accounts.isEmpty()) return@withContext Result.success(emptyList())
+
+            if (overriddenParentId != null && mode == "files") {
+                val parentFile = dao.getFileById(overriddenParentId)
+                if (parentFile != null) {
+                    accounts = accounts.filter { it.id == parentFile.accountId }
+                }
+            }
 
             val results = accounts.map { accountEntity ->
                 async {
@@ -114,14 +144,56 @@ class CloudRepositoryImpl @Inject constructor(
                     val provider = providers.find { it.providerId == account.provider }
                     if (provider != null) {
                         try {
-                            val files = fetcher(provider, account)
-                            dao.insertFiles(files.map { it.toEntity() })
-                            files
+                            Log.d("CloudSync", "Starting sync for ${account.email} using provider ${provider.providerId}")
+                            var hasClearedCache = false
+                            
+                            val files = withTimeoutOrNull(45000L) { // Increased timeout for multi-page sync
+                                val fetchedResult = fetcher(provider, account) { partialFiles ->
+                                    // Incremental Insertion - make it synchronous with the fetching process
+                                    if (!hasClearedCache) {
+                                        // Reset flags or clear folder once before first batch
+                                        when (mode) {
+                                            "starred" -> dao.resetStarredStatus(account.id)
+                                            "shared" -> dao.resetSharedStatus(account.id)
+                                            "trash" -> dao.resetTrashedStatus(account.id)
+                                        }
+                                        if (mode == "files") {
+                                            dao.deleteFilesByAccountAndFolder(overriddenParentId, account.id)
+                                        }
+                                        hasClearedCache = true
+                                    }
+
+                                    if (partialFiles.isNotEmpty()) {
+                                        val entities = if (mode == "files") {
+                                            partialFiles.map { it.toEntity().copy(parentId = overriddenParentId) }
+                                        } else {
+                                            partialFiles.map { it.toEntity() }
+                                        }
+                                        // Synchronous call as the lambda is now suspend
+                                        dao.insertFiles(entities)
+                                    }
+                                }
+                                
+                                if (fetchedResult.isSuccess) {
+                                    fetchedResult.getOrDefault(emptyList())
+                                } else {
+                                    Log.e("CloudRepository", "Fetch failed for ${account.email}: ${fetchedResult.exceptionOrNull()?.message}")
+                                    null 
+                                }
+                            }
+                            
+                            if (files == null) {
+                                Log.e("CloudRepository", "Sync failed or timeout for ${account.email} (${account.provider})")
+                            } else {
+                                Log.d("CloudSync", "Finished sync for ${account.email}. Total files: ${files.size}")
+                            }
+                            
+                            files ?: emptyList<CloudFile>()
                         } catch (e: Exception) {
-                            Log.e("CloudRepository", "Sync failed for ${account.email}: ${e.message}")
-                            emptyList()
+                            Log.e("CloudRepository", "Sync error for ${account.email}: ${e.message}")
+                            emptyList<CloudFile>()
                         }
-                    } else emptyList()
+                    } else emptyList<CloudFile>()
                 }
             }.awaitAll()
             Result.success(results.flatten())

@@ -127,8 +127,10 @@ fun FileBrowserScreen(
     Scaffold(
         topBar = {
             if (isSelectionMode) {
+                val selectedFile = (uiState as? FilesUiState.Success)?.files?.find { it.id == selectedFileIds.first() }
                 ContextualTopAppBar(
                     selectedCount = selectedFileIds.size,
+                    showShare = selectedFileIds.size == 1 && selectedFile?.isOwner == true,
                     onClearSelection = { viewModel.clearSelection() },
                     onDelete = { showDeleteConfirm = true },
                     onDownload = { 
@@ -303,8 +305,12 @@ fun FileBrowserScreen(
                     }
                     "open_native" -> {
                         selectedFileForAction!!.webViewLink?.let { url ->
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(intent)
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, context.getString(R.string.no_app_to_open), Toast.LENGTH_SHORT).show()
+                            }
                         } ?: run {
                             Toast.makeText(context, context.getString(R.string.downloading_to_open), Toast.LENGTH_SHORT).show()
                             viewModel.downloadFile(selectedFileForAction!!)
@@ -312,8 +318,12 @@ fun FileBrowserScreen(
                     }
                     "web" -> {
                         selectedFileForAction!!.webViewLink?.let { url ->
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(intent)
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, context.getString(R.string.no_app_to_open), Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }
@@ -322,10 +332,26 @@ fun FileBrowserScreen(
     }
 
     if (showDeleteConfirm) {
+        val provider = selectedFileForAction?.provider?.lowercase() ?: ""
+        val isPermanent = provider == "dropbox" || provider == "webdav" || provider == "sftp"
+        
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text(stringResource(R.string.delete)) },
-            text = { Text(stringResource(R.string.confirm_delete)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.confirm_delete))
+                    if (isPermanent) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.delete_permanent_warning),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 Button(onClick = {
                     viewModel.deleteFile(selectedFileForAction!!)
@@ -375,14 +401,15 @@ fun FileBrowserScreen(
     }
 
     if (showShareDialog && selectedFileForAction != null) {
+        val liveFile = (uiState as? FilesUiState.Success)?.files?.find { it.id == selectedFileForAction?.id } ?: selectedFileForAction!!
         ShareDialog(
-            file = selectedFileForAction!!, 
+            file = liveFile, 
             onDismiss = { showShareDialog = false },
             onShare = { email, role ->
-                viewModel.shareFile(selectedFileForAction!!, email, role)
+                viewModel.shareFile(liveFile, email, role)
             },
             onSetGeneralAccess = { isPublic ->
-                viewModel.setGeneralAccess(selectedFileForAction!!, isPublic)
+                viewModel.setGeneralAccess(liveFile, isPublic)
             }
         )
     }
@@ -497,6 +524,7 @@ fun PageHeader(mode: String, folderName: String) {
         "recent" -> stringResource(R.string.nav_home)
         "starred" -> stringResource(R.string.nav_starred)
         "shared" -> stringResource(R.string.nav_shared)
+        "trash" -> stringResource(R.string.nav_trash)
         else -> folderName
     }
 
@@ -504,6 +532,8 @@ fun PageHeader(mode: String, folderName: String) {
         "recent" -> Icons.Default.AccessTime
         "starred" -> Icons.Default.Star
         "shared" -> Icons.Default.People
+        "trash" -> Icons.Default.Delete
+        "files" -> if (folderName == stringResource(R.string.nav_home)) Icons.Default.Home else Icons.Default.FolderOpen
         else -> Icons.Default.FolderOpen
     }
     
@@ -511,6 +541,7 @@ fun PageHeader(mode: String, folderName: String) {
         "recent" -> Color(0xFF4285F4)
         "starred" -> Color(0xFFFBC02D)
         "shared" -> Color(0xFF4CAF50)
+        "trash" -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -675,11 +706,18 @@ fun FullFilePreview(file: CloudFile, onBack: () -> Unit, onDownload: () -> Unit)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.download))
                             }
-                            if (file.webViewLink != null) {
+                            val provider = file.provider.lowercase()
+                            val isCloudWebSupported = provider == "google_drive" || provider == "onedrive" || provider == "dropbox" || provider == "box"
+                            
+                            if (file.webViewLink != null && isCloudWebSupported) {
                                 OutlinedButton(
                                     onClick = { 
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(file.webViewLink!!))
-                                        context.startActivity(intent)
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(file.webViewLink!!))
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, context.getString(R.string.no_app_to_open), Toast.LENGTH_SHORT).show()
+                                        }
                                     },
                                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White),
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
@@ -759,6 +797,7 @@ fun BreadcrumbsRow(path: List<FolderInfo>, onNavigate: (Int) -> Unit) {
 @Composable
 fun ContextualTopAppBar(
     selectedCount: Int,
+    showShare: Boolean,
     onClearSelection: () -> Unit,
     onDelete: () -> Unit,
     onDownload: () -> Unit,
@@ -772,7 +811,7 @@ fun ContextualTopAppBar(
             }
         },
         actions = {
-            if (selectedCount == 1) {
+            if (showShare) {
                 IconButton(onClick = onShare) {
                     Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                 }
@@ -1127,14 +1166,17 @@ fun FileActionBottomSheet(file: CloudFile, onDismiss: () -> Unit, onAction: (Str
             
             ActionItem(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.open_native)) { onAction("open_native") }
 
+            val provider = file.provider.lowercase()
+            val isCloudWebSupported = provider == "google_drive" || provider == "onedrive" || provider == "dropbox" || provider == "box"
+            
             ActionItem(
                 icon = Icons.Default.Share, 
                 label = stringResource(R.string.share),
-                enabled = file.webViewLink != null || file.supportsNativeSharing,
+                enabled = isCloudWebSupported && file.isOwner,
                 onClick = { onAction("share") }
             )
 
-            if (file.webViewLink != null) {
+            if (file.webViewLink != null && isCloudWebSupported) {
                 ActionItem(Icons.Default.Language, stringResource(R.string.open_in_web)) { onAction("web") }
             }
 

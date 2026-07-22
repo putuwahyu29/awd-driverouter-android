@@ -20,28 +20,74 @@ class BoxProvider @Inject constructor(
 ) : CloudProvider {
     override val providerId: String = "box"
 
-    override suspend fun listFiles(account: CloudAccount, folderId: String?): List<CloudFile> {
-        val session = authManager.getSession() ?: return emptyList()
+    override suspend fun listFiles(
+        account: CloudAccount, 
+        folderId: String?,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        val session = authManager.getSession() ?: return Result.failure(Exception("Not logged in"))
         val targetId = folderId ?: "0" 
         return try {
-            val items = BoxApiFolder(session).getItemsRequest(targetId).send()
-            items.map { it.toCloudFile(account) }
+            val allItems = mutableListOf<BoxItem>()
+            var offset = 0
+            val limit = 100
+            
+            while (true) {
+                val items = BoxApiFolder(session).getItemsRequest(targetId)
+                    .setLimit(limit)
+                    .setOffset(offset)
+                    .send()
+                
+                if (items.size() == 0) break
+                
+                val currentBatch = items.map { it.toCloudFile(account) }
+                allItems.addAll(items)
+                onPartialResult?.invoke(currentBatch)
+                
+                if (items.size() < limit) break
+                offset += items.size()
+            }
+            
+            Result.success(allItems.map { it.toCloudFile(account) })
         } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+            Result.failure(e)
         }
     }
 
-    override suspend fun listStarred(account: CloudAccount): List<CloudFile> {
-        return emptyList()
+    override suspend fun listStarred(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        return Result.success(emptyList())
     }
 
-    override suspend fun listRecent(account: CloudAccount): List<CloudFile> {
-        return emptyList()
+    override suspend fun listRecent(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        return Result.success(emptyList())
     }
 
-    override suspend fun listShared(account: CloudAccount): List<CloudFile> {
-        return emptyList()
+    override suspend fun listShared(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        return Result.success(emptyList())
+    }
+
+    override suspend fun listTrashed(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        val session = authManager.getSession() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val items = BoxApiFolder(session).getTrashedItemsRequest().send()
+            val currentBatch = items.map { it.toCloudFile(account).copy(isTrashed = true) }
+            onPartialResult?.invoke(currentBatch)
+            Result.success(currentBatch)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     private fun BoxItem.toCloudFile(account: CloudAccount): CloudFile {
@@ -55,6 +101,7 @@ class BoxProvider @Inject constructor(
             path = "", 
             isFolder = this is BoxFolder,
             modifiedTime = this.modifiedAt?.time,
+            isTrashed = false,
             thumbnailLink = null,
             webViewLink = "https://app.box.com/file/${this.id}"
         )
@@ -136,6 +183,15 @@ class BoxProvider @Inject constructor(
     }
 
     override suspend fun getQuota(account: CloudAccount): Result<QuotaInfo> {
-        return Result.failure(Exception("Not implemented"))
+        val session = authManager.getSession() ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val user = com.box.androidsdk.content.BoxApiUser(session).getCurrentUserInfoRequest().send()
+            Result.success(QuotaInfo(
+                usedSpace = user.spaceUsed ?: 0L,
+                totalSpace = user.spaceAmount ?: 0L
+            ))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

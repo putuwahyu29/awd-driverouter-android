@@ -23,7 +23,9 @@ data class CloudFileEntity(
     val isPublic: Boolean = false,
     val lastAccessedTime: Long?,
     val shareLink: String?,
-    val supportsNativeSharing: Boolean = false
+    val supportsNativeSharing: Boolean = false,
+    val isOwner: Boolean = true,
+    val isTrashed: Boolean = false
 )
 
 fun CloudFileEntity.toDomain() = CloudFile(
@@ -44,7 +46,9 @@ fun CloudFileEntity.toDomain() = CloudFile(
     isPublic = isPublic,
     lastAccessedTime = lastAccessedTime,
     shareLink = shareLink,
-    supportsNativeSharing = supportsNativeSharing
+    supportsNativeSharing = supportsNativeSharing,
+    isOwner = isOwner,
+    isTrashed = isTrashed
 )
 
 fun CloudFile.toEntity(overriddenParentId: String? = null) = CloudFileEntity(
@@ -65,5 +69,7 @@ fun CloudFile.toEntity(overriddenParentId: String? = null) = CloudFileEntity(
     isPublic = isPublic,
     lastAccessedTime = lastAccessedTime,
     shareLink = shareLink,
-    supportsNativeSharing = supportsNativeSharing
+    supportsNativeSharing = supportsNativeSharing,
+    isOwner = isOwner,
+    isTrashed = isTrashed
 )

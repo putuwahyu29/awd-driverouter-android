@@ -13,6 +13,8 @@ interface CloudRepository {
     fun getRecentFiles(): Flow<List<CloudFile>>
     
     fun getSharedFiles(): Flow<List<CloudFile>>
+
+    fun getTrashedFiles(): Flow<List<CloudFile>>
     
     suspend fun syncFiles(folderId: String? = null): Result<List<CloudFile>>
 
@@ -21,6 +23,8 @@ interface CloudRepository {
     suspend fun syncRecent(): Result<List<CloudFile>>
     
     suspend fun syncShared(): Result<List<CloudFile>>
+
+    suspend fun syncTrash(): Result<List<CloudFile>>
 
     suspend fun getFilesByAccount(folderId: String?, accountId: String): Result<List<CloudFile>>
 

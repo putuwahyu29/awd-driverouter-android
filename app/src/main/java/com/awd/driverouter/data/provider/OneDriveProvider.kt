@@ -9,7 +9,7 @@ import com.microsoft.graph.authentication.IAuthenticationProvider
 import com.microsoft.graph.models.DriveItem
 import com.microsoft.graph.models.Folder
 import com.microsoft.graph.requests.GraphServiceClient
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import java.io.File
 import java.net.URL
 import java.util.concurrent.CompletableFuture
@@ -20,15 +20,23 @@ class OneDriveProvider @Inject constructor(
 ) : CloudProvider {
     override val providerId: String = "onedrive"
 
+    private val providerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     private fun getGraphClient(account: CloudAccount): GraphServiceClient<okhttp3.Request> {
         val authProvider = object : IAuthenticationProvider {
             override fun getAuthorizationTokenAsync(requestUrl: URL): CompletableFuture<String> {
                 val future = CompletableFuture<String>()
-                val token = runBlocking<String?> { authManager.getAccessTokenForAccount(account.id) }
-                if (token != null) {
-                    future.complete(token)
-                } else {
-                    future.completeExceptionally(Exception("Token not found for account ${account.email}"))
+                providerScope.launch {
+                    try {
+                        val token = authManager.getAccessTokenForAccount(account.id)
+                        if (token != null) {
+                            future.complete(token)
+                        } else {
+                            future.completeExceptionally(Exception("Token not found for account ${account.email}"))
+                        }
+                    } catch (e: Exception) {
+                        future.completeExceptionally(e)
+                    }
                 }
                 return future
             }
@@ -39,52 +47,127 @@ class OneDriveProvider @Inject constructor(
             .buildClient()
     }
 
-    override suspend fun listFiles(account: CloudAccount, folderId: String?): List<CloudFile> {
+    override suspend fun listFiles(
+        account: CloudAccount, 
+        folderId: String?,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val client = getGraphClient(account)
         return try {
-            val request = if (folderId == null) {
-                client.me().drive().root().children().buildRequest()
+            val requestBuilder = if (folderId == null) {
+                client.me().drive().root().children()
             } else {
-                client.me().drive().items(folderId).children().buildRequest()
+                client.me().drive().items(folderId).children()
             }
-            // Expand permissions to check for public sharing
-            val result = request.expand("permissions").get() ?: return emptyList()
-            result.currentPage.map { it.toCloudFile(account) }
+            
+            val request = requestBuilder.buildRequest().expand("permissions")
+            val allFiles = mutableListOf<CloudFile>()
+            var page = request.get()
+            
+            while (page != null) {
+                val currentBatch = page.currentPage.map { it.toCloudFile(account) }
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                
+                val nextPageRequest = page.nextPage
+                page = nextPageRequest?.buildRequest()?.get()
+            }
+            
+            Result.success(allFiles)
         } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+            Result.failure(e)
         }
     }
 
-    override suspend fun listStarred(account: CloudAccount): List<CloudFile> {
-        // OneDrive doesn't have a direct "starred" filter like Google Drive in MS Graph API v1.0. 
-        // We'll use "following" which is the closest equivalent.
+    override suspend fun listStarred(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val client = getGraphClient(account)
         return try {
-            val result = client.me().drive().following().buildRequest().get()
-            result?.currentPage?.map { it.toCloudFile(account) } ?: emptyList()
+            val allFiles = mutableListOf<CloudFile>()
+            var page = client.me().drive().following().buildRequest().get()
+            
+            while (page != null) {
+                val currentBatch = page.currentPage.map { it.toCloudFile(account) }
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                
+                val nextPageRequest = page.nextPage
+                page = nextPageRequest?.buildRequest()?.get()
+            }
+            Result.success(allFiles)
         } catch (e: Exception) {
-            emptyList()
+            Result.failure(e)
         }
     }
 
-    override suspend fun listRecent(account: CloudAccount): List<CloudFile> {
+    override suspend fun listRecent(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val client = getGraphClient(account)
         return try {
-            val result = client.me().drive().recent().buildRequest().get()
-            result?.currentPage?.map { it.toCloudFile(account) } ?: emptyList()
+            val allFiles = mutableListOf<CloudFile>()
+            var page = client.me().drive().recent().buildRequest().get()
+            
+            while (page != null) {
+                val currentBatch = page.currentPage.map { it.toCloudFile(account) }
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                
+                val nextPageRequest = page.nextPage
+                page = nextPageRequest?.buildRequest()?.get()
+            }
+            Result.success(allFiles)
         } catch (e: Exception) {
-            emptyList()
+            Result.failure(e)
         }
     }
 
-    override suspend fun listShared(account: CloudAccount): List<CloudFile> {
+    override suspend fun listShared(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val client = getGraphClient(account)
         return try {
-            val result = client.me().drive().sharedWithMe().buildRequest().get()
-            result?.currentPage?.map { it.toCloudFile(account) } ?: emptyList()
+            val allFiles = mutableListOf<CloudFile>()
+            var page = client.me().drive().sharedWithMe().buildRequest().get()
+            
+            while (page != null) {
+                val currentBatch = page.currentPage.map { it.toCloudFile(account) }
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                
+                val nextPageRequest = page.nextPage
+                page = nextPageRequest?.buildRequest()?.get()
+            }
+            Result.success(allFiles)
         } catch (e: Exception) {
-            emptyList()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun listTrashed(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        val client = getGraphClient(account)
+        return try {
+            val allFiles = mutableListOf<CloudFile>()
+            var page = client.me().drive().special("trash").children().buildRequest().get()
+            
+            while (page != null) {
+                val currentBatch = page.currentPage.map { it.toCloudFile(account).copy(isTrashed = true) }
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                
+                val nextPageRequest = page.nextPage
+                page = nextPageRequest?.buildRequest()?.get()
+            }
+            Result.success(allFiles)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -102,14 +185,17 @@ class OneDriveProvider @Inject constructor(
             provider = "onedrive",
             accountId = account.id,
             path = "",
+            parentId = this.parentReference?.id,
             isFolder = this.folder != null,
             modifiedTime = this.lastModifiedDateTime?.toInstant()?.toEpochMilli(),
             thumbnailLink = null,
             webViewLink = this.webUrl,
             isShared = isShared,
             isPublic = isPublic,
+            isTrashed = false,
             lastAccessedTime = this.lastModifiedDateTime?.toInstant()?.toEpochMilli(),
-            supportsNativeSharing = true
+            supportsNativeSharing = true,
+            isOwner = this.remoteItem == null
         )
     }
 
@@ -154,18 +240,6 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val total = source.length()
-            // For simplicity and to support progress, we wrap the stream.
-            // Note: MS Graph SDK might not report progress automatically for small uploads
-            // without LargeFileUploadTask, but we can try to wrap the InputStream if we use a different PUT method.
-            // However, the current SDK 'put' takes byte[].
-            
-            // For now, let's just do it as is but reporting 0 then 100 if we can't easily wrap.
-            // OR we use LargeFileUploadTask which is the proper way for progress.
-            
-            // For this implementation, I'll stick to the current PUT but simulate progress if it's small,
-            // or just report 100% at the end. 
-            // Better: use LargeFileUploadTask if source > 4MB (Graph API limit for simple PUT is 4MB).
-            
             val byteContent = source.readBytes()
             val item = if (folderId == null) {
                 client.me().drive().root().itemWithPath(fileName).content().buildRequest().put(byteContent)

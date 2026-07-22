@@ -2,6 +2,7 @@ package com.awd.driverouter.data.remote
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import com.awd.driverouter.data.local.CredentialManager
 import com.microsoft.identity.client.*
 import com.microsoft.identity.client.exception.MsalException
@@ -29,10 +30,12 @@ class OneDriveAuthManager @Inject constructor(
 
         val clientId = credentialManager.getCredential(CredentialManager.ONEDRIVE_CLIENT_ID)
         if (clientId.isEmpty()) {
+            Log.e("OneDriveAuth", "Client ID is empty!")
             return@withContext null
         }
         
         val redirectUri = credentialManager.getCredential(CredentialManager.ONEDRIVE_REDIRECT_URI)
+        Log.d("OneDriveAuth", "Initializing MSAL with ClientID: ${clientId.take(5)}... and RedirectURI: $redirectUri")
 
         val configFile = File(context.cacheDir, "msal_config_multi.json")
         val configJson = """
@@ -60,11 +63,13 @@ class OneDriveAuthManager @Inject constructor(
                 configFile,
                 object : IPublicClientApplication.IMultipleAccountApplicationCreatedListener {
                     override fun onCreated(application: IMultipleAccountPublicClientApplication) {
+                        Log.d("OneDriveAuth", "MSAL Application created successfully")
                         mMultipleAccountApp = application
                         continuation.resume(application)
                     }
 
                     override fun onError(exception: MsalException) {
+                        Log.e("OneDriveAuth", "MSAL creation error: ${exception.message}", exception)
                         exception.printStackTrace()
                         continuation.resume(null)
                     }

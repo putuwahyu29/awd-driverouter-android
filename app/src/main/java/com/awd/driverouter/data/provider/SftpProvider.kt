@@ -43,11 +43,15 @@ class SftpProvider @Inject constructor(
         }
     }
 
-    override suspend fun listFiles(account: CloudAccount, folderId: String?): List<CloudFile> = try {
+    override suspend fun listFiles(
+        account: CloudAccount, 
+        folderId: String?,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = try {
         useSftp(account) { sftp ->
             val path = folderId ?: "."
             val entries = sftp.ls(path)
-            entries.map { entry ->
+            val files = entries.map { entry ->
                 val isDir = entry.attributes.type == FileMode.Type.DIRECTORY
                 CloudFile(
                     id = entry.path,
@@ -61,10 +65,11 @@ class SftpProvider @Inject constructor(
                     modifiedTime = entry.attributes.mtime * 1000L
                 )
             }
+            onPartialResult?.invoke(files)
+            Result.success(files)
         }
     } catch (e: Exception) {
-        e.printStackTrace()
-        emptyList()
+        Result.failure(e)
     }
 
     override suspend fun downloadFile(
@@ -174,7 +179,23 @@ class SftpProvider @Inject constructor(
         Result.failure(Exception("SFTP does not support native quota reporting"))
     }
 
-    override suspend fun listStarred(account: CloudAccount): List<CloudFile> = emptyList()
-    override suspend fun listRecent(account: CloudAccount): List<CloudFile> = emptyList()
-    override suspend fun listShared(account: CloudAccount): List<CloudFile> = emptyList()
+    override suspend fun listStarred(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
+
+    override suspend fun listRecent(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
+
+    override suspend fun listShared(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
+
+    override suspend fun listTrashed(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
 }

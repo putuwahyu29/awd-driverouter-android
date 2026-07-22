@@ -7,6 +7,7 @@
     <string name="nav_files">File</string>
     <string name="nav_transfers">Transfer</string>
     <string name="nav_shared">Dibagikan</string>
+    <string name="nav_trash">Sampah</string>
     <string name="nav_accounts">Akun</string>
     <string name="nav_settings">Pengaturan</string>
     <string name="no_accounts_connected">Belum ada akun terhubung</string>
@@ -144,6 +145,7 @@
     <string name="default_folder_name">Folder</string>
     <string name="path_label">Path: %1$s</string>
     <string name="no_internet">Tidak ada koneksi internet</string>
+    <string name="no_app_to_open">Tidak ada aplikasi yang dapat membuka aksi ini</string>
     <string name="error_sync_generic">Gagal sinkronisasi: %1$s</string>
     <string name="files_deleted_count">%1$d file berhasil dihapus</string>
     <string name="sync_failed">Gagal sinkronisasi: %1$s</string>
@@ -243,6 +245,7 @@
 
     <!-- Dialogs -->
     <string name="confirm_delete">Apakah Anda yakin ingin menghapus file ini?</string>
+    <string name="delete_permanent_warning">Peringatan: Provider ini tidak mendukung Keranjang Sampah. File akan dihapus secara permanen!</string>
     <string name="confirm_remove_account">Putuskan sambungan akun ini?</string>
     <string name="cancel">Batal</string>
     <string name="confirm">Konfirmasi</string>

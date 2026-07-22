@@ -30,6 +30,7 @@ class AccountsViewModel @Inject constructor(
     private val credentialManager: CredentialManager,
     private val settingsManager: SettingsManager,
     private val accountDao: AccountDao,
+    private val cloudFileDao: CloudFileDao,
     private val repository: CloudRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -145,6 +146,9 @@ class AccountsViewModel @Inject constructor(
 
     fun removeAccount(account: CloudAccount) {
         viewModelScope.launch {
+            // Delete files associated with this account from local cache
+            cloudFileDao.deleteFilesByAccount(account.id)
+            
             accountDao.deleteAccount(AccountEntity(account.id, account.email, account.name, account.provider, account.usedSpace, account.totalSpace, account.isConnected, account.isMainAccount))
             if (account.provider == "google_drive") googleAuthManager.signOut {}
             _statusMessage.emit(context.getString(R.string.account_removed))
@@ -161,23 +165,32 @@ class AccountsViewModel @Inject constructor(
     fun oneDriveSignIn(activity: Activity) {
         viewModelScope.launch {
             _isLoggingIn.value = true
-            oneDriveAuthManager.signIn(activity).onSuccess { account ->
-                val entity = AccountEntity(
-                    id = account.id,
-                    email = account.username,
-                    displayName = account.username,
-                    providerId = "onedrive",
-                    usedSpace = 0,
-                    totalSpace = 0,
-                    isConnected = true
-                )
-                accountDao.insertAccount(entity)
-                _statusMessage.emit(context.getString(R.string.account_added, context.getString(R.string.onedrive)))
-                repository.syncFiles(null)
-            }.onFailure {
-                _statusMessage.emit(context.getString(R.string.login_failed_provider, context.getString(R.string.onedrive)))
+            try {
+                oneDriveAuthManager.signIn(activity).onSuccess { account ->
+                    val entity = AccountEntity(
+                        id = account.id,
+                        email = account.username,
+                        displayName = account.username,
+                        providerId = "onedrive",
+                        usedSpace = 0,
+                        totalSpace = 0,
+                        isConnected = true
+                    )
+                    accountDao.insertAccount(entity)
+                    _statusMessage.emit(context.getString(R.string.account_added, context.getString(R.string.onedrive)))
+                    
+                    // Close loading dialog immediately after account is added
+                    _isLoggingIn.value = false
+                    
+                    // Sync in background
+                    launch { repository.syncFiles(null) }
+                    launch { repository.syncQuota() }
+                }.onFailure {
+                    _statusMessage.emit(context.getString(R.string.login_failed_provider, context.getString(R.string.onedrive)))
+                }
+            } finally {
+                _isLoggingIn.value = false
             }
-            _isLoggingIn.value = false
         }
     }
 
@@ -187,28 +200,35 @@ class AccountsViewModel @Inject constructor(
 
     fun boxSignIn(activity: Activity) {
         _isLoggingIn.value = true
-        boxAuthManager.getSession()?.authenticate(activity)?.addOnCompletedListener {
-            viewModelScope.launch {
-                val boxUser = boxAuthManager.getSession()?.getUser()
-                if (boxUser != null) {
-                    val entity = AccountEntity(
-                        id = boxUser.id,
-                        email = boxUser.login,
-                        displayName = boxUser.name,
-                        providerId = "box",
-                        usedSpace = 0,
-                        totalSpace = 0,
-                        isConnected = true
-                    )
-                    accountDao.insertAccount(entity)
-                    _statusMessage.emit(context.getString(R.string.account_added, context.getString(R.string.box)))
-                    repository.syncFiles(null)
-                } else {
-                    _statusMessage.emit(context.getString(R.string.login_failed_provider, context.getString(R.string.box)))
+        try {
+            boxAuthManager.getSession()?.authenticate(activity)?.addOnCompletedListener {
+                viewModelScope.launch {
+                    try {
+                        val boxUser = boxAuthManager.getSession()?.getUser()
+                        if (boxUser != null) {
+                            val entity = AccountEntity(
+                                id = boxUser.id,
+                                email = boxUser.login,
+                                displayName = boxUser.name,
+                                providerId = "box",
+                                usedSpace = 0,
+                                totalSpace = 0,
+                                isConnected = true
+                            )
+                            accountDao.insertAccount(entity)
+                            _statusMessage.emit(context.getString(R.string.account_added, context.getString(R.string.box)))
+                            launch { repository.syncFiles(null) }
+                        } else {
+                            _statusMessage.emit(context.getString(R.string.login_failed_provider, context.getString(R.string.box)))
+                        }
+                    } finally {
+                        _isLoggingIn.value = false
+                    }
                 }
-            }
+            } ?: run { _isLoggingIn.value = false }
+        } catch (e: Exception) {
             _isLoggingIn.value = false
-        } ?: run { _isLoggingIn.value = false }
+        }
     }
 
     fun webDavSignIn(url: String, user: String, pass: String, displayName: String) {

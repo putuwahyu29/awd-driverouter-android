@@ -46,10 +46,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val labelRes: Int, val icon: @Composable () -> Unit) {
-    object Recent : Screen("recent", R.string.nav_home, { Icon(Icons.Default.Home, null) })
+    object Home : Screen("files", R.string.nav_home, { Icon(Icons.Default.Home, null) })
     object Starred : Screen("starred", R.string.nav_starred, { Icon(Icons.Default.Star, null) })
     object Shared : Screen("shared", R.string.nav_shared, { Icon(Icons.Default.People, null) })
-    object Files : Screen("files", R.string.nav_files, { Icon(Icons.Default.Folder, null) })
+    object Trash : Screen("trash", R.string.nav_trash, { Icon(Icons.Default.Delete, null) })
     
     object Transfers : Screen("transfers", R.string.nav_transfers, { Icon(Icons.Default.SyncAlt, null) })
     object Strategy : Screen("strategy", R.string.upload_strategy, { Icon(Icons.Default.CompareArrows, null) })
@@ -64,7 +64,7 @@ fun MainScreen(
     accountsViewModel: AccountsViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
-    val bottomNavItems = listOf(Screen.Recent, Screen.Starred, Screen.Shared, Screen.Files)
+    val bottomNavItems = listOf(Screen.Home, Screen.Starred, Screen.Shared, Screen.Trash)
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -169,14 +169,14 @@ fun MainScreen(
         ) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = Screen.Recent.route,
+                startDestination = Screen.Home.route,
                 modifier = Modifier.padding(innerPadding),
                 enterTransition = { fadeIn(animationSpec = tween(300)) + slideInVertically(initialOffsetY = { 30 }) },
                 exitTransition = { fadeOut(animationSpec = tween(300)) }
             ) {
-                composable(Screen.Recent.route) { 
+                composable(Screen.Home.route) { 
                     FileBrowserScreen(
-                        mode = "recent",
+                        mode = "files",
                         onMenuClick = { scope.launch { drawerState.open() } }
                     ) 
                 }
@@ -192,11 +192,11 @@ fun MainScreen(
                         onMenuClick = { scope.launch { drawerState.open() } }
                     ) 
                 }
-                composable(Screen.Files.route) { 
+                composable(Screen.Trash.route) {
                     FileBrowserScreen(
-                        mode = "files",
+                        mode = "trash",
                         onMenuClick = { scope.launch { drawerState.open() } }
-                    ) 
+                    )
                 }
                 composable(Screen.Transfers.route) { 
                     TransfersScreen(onBack = { navController.popBackStack() }) 
@@ -257,7 +257,7 @@ fun MainDrawerContent(
                         fontWeight = FontWeight.Bold
                     )
                     
-                    if (hasAccounts) {
+                    if (hasAccounts && totalSpace > 0) {
                         Spacer(Modifier.height(16.dp))
                         LinearProgressIndicator(
                             progress = { percentage },
@@ -279,6 +279,13 @@ fun MainDrawerContent(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
+                    } else if (hasAccounts) {
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = "Storage: Unlimited / Unknown",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     } else {
                         Spacer(Modifier.height(8.dp))
                         Text(

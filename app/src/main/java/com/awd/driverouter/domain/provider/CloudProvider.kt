@@ -8,7 +8,11 @@ import java.io.File
 interface CloudProvider {
     val providerId: String
     
-    suspend fun listFiles(account: CloudAccount, folderId: String? = null): List<CloudFile>
+    suspend fun listFiles(
+        account: CloudAccount, 
+        folderId: String? = null,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)? = null
+    ): Result<List<CloudFile>>
     
     suspend fun downloadFile(
         account: CloudAccount, 
@@ -49,9 +53,23 @@ interface CloudProvider {
     }
 
     // Aggregation Methods
-    suspend fun listStarred(account: CloudAccount): List<CloudFile>
+    suspend fun listStarred(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)? = null
+    ): Result<List<CloudFile>>
     
-    suspend fun listRecent(account: CloudAccount): List<CloudFile>
+    suspend fun listRecent(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)? = null
+    ): Result<List<CloudFile>>
     
-    suspend fun listShared(account: CloudAccount): List<CloudFile>
+    suspend fun listShared(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)? = null
+    ): Result<List<CloudFile>>
+
+    suspend fun listTrashed(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)? = null
+    ): Result<List<CloudFile>> = Result.success(emptyList())
 }

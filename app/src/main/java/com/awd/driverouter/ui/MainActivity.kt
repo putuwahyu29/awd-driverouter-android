@@ -1,6 +1,7 @@
 package com.awd.driverouter.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -18,11 +19,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.lifecycleScope
 import com.awd.driverouter.data.local.AppTheme
 import com.awd.driverouter.data.local.SettingsManager
 import com.awd.driverouter.ui.screens.MainScreen
 import com.awd.driverouter.ui.theme.CloudHubTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -30,6 +33,15 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var settingsManager: SettingsManager
+
+    @Inject
+    lateinit var dropboxAuthManager: com.awd.driverouter.data.remote.DropboxAuthManager
+
+    @Inject
+    lateinit var repository: com.awd.driverouter.domain.repository.CloudRepository
+
+    @Inject
+    lateinit var accountDao: com.awd.driverouter.data.local.AccountDao
 
     private var isUnlocked by mutableStateOf(false)
 
@@ -39,9 +51,58 @@ class MainActivity : AppCompatActivity() {
         // Handle permission result if needed
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDropboxRedirect(intent)
+    }
+
+    private fun handleDropboxRedirect(intent: Intent) {
+        intent.data?.let { uri ->
+            if (uri.scheme == "awd-driverouter" && uri.host == "dropbox-auth") {
+                val token = dropboxAuthManager.handleAuthRedirect(uri)
+                if (token != null) {
+                    lifecycleScope.launch {
+                        // Small delay to ensure preferences are synchronized
+                        kotlinx.coroutines.delay(1000)
+                        
+                        var dbAccount: com.dropbox.core.v2.users.FullAccount? = null
+                        var retryCount = 0
+                        while (dbAccount == null && retryCount < 3) {
+                            dbAccount = dropboxAuthManager.getCurrentAccount()
+                            if (dbAccount == null) {
+                                android.util.Log.w("DropboxAuth", "Retry ${retryCount + 1} fetching account info...")
+                                kotlinx.coroutines.delay(1500)
+                                retryCount++
+                            }
+                        }
+
+                        val entity = com.awd.driverouter.data.local.AccountEntity(
+                            id = dbAccount?.accountId ?: "dropbox_${System.currentTimeMillis()}",
+                            email = dbAccount?.email ?: "Dropbox User",
+                            displayName = dbAccount?.name?.displayName ?: "Dropbox",
+                            providerId = "dropbox",
+                            usedSpace = 0,
+                            totalSpace = 0,
+                            isConnected = true
+                        )
+                        accountDao.insertAccount(entity)
+                        dropboxAuthManager.finalizeAuth(entity.id)
+                        
+                        // Sync in background
+                        launch { repository.syncFiles(null) }
+                        launch { repository.syncQuota() }
+                        
+                        android.widget.Toast.makeText(this@MainActivity, "Dropbox Connected: ${entity.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        handleDropboxRedirect(intent)
         checkNotificationPermission()
 
         setContent {

@@ -1,5 +1,6 @@
 package com.awd.driverouter.data.provider
 
+import android.util.Log
 import com.awd.driverouter.data.remote.DropboxAuthManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
@@ -17,45 +18,79 @@ class DropboxProvider @Inject constructor(
 ) : CloudProvider {
     override val providerId: String = "dropbox"
 
-    override suspend fun listFiles(account: CloudAccount, folderId: String?): List<CloudFile> {
-        val client = authManager.getClient() ?: return emptyList()
+    override suspend fun listFiles(
+        account: CloudAccount, 
+        folderId: String?,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         val path = folderId ?: ""
         return try {
-            val result = client.files().listFolder(path)
-            result.entries.map { it.toCloudFile(account) }
+            Log.d("DropboxSync", "Starting listFiles for ${account.email} (ID: ${account.id}) at path: '$path'")
+            val allFiles = mutableListOf<CloudFile>()
+            
+            var result = client.files().listFolderBuilder(path)
+                .withIncludeMountedFolders(true)
+                .start()
+            
+            while (true) {
+                val currentBatch = result.entries.map { it.toCloudFile(account) }
+                Log.d("DropboxSync", "Found ${currentBatch.size} entries in batch for ${account.email}")
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                
+                if (!result.hasMore) break
+                result = client.files().listFolderContinue(result.cursor)
+            }
+            
+            Result.success(allFiles)
         } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+            Log.e("DropboxSync", "Error listing files for ${account.email}: ${e.message}", e)
+            Result.failure(e)
         }
     }
 
-    override suspend fun listStarred(account: CloudAccount): List<CloudFile> {
-        // Dropbox standard API doesn't have a direct "starred" filter. 
-        // We'll return empty for now.
-        return emptyList()
+    override suspend fun listStarred(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        return Result.success(emptyList())
     }
 
-    override suspend fun listRecent(account: CloudAccount): List<CloudFile> {
-        // Dropbox has getGetLastDirectFiles but it's not exactly the same.
-        // We can use search with a recent filter or just return empty for now.
-        return emptyList()
+    override suspend fun listRecent(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        return Result.success(emptyList())
     }
 
-    override suspend fun listShared(account: CloudAccount): List<CloudFile> {
-        return emptyList()
+    override suspend fun listShared(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        return Result.success(emptyList())
     }
 
     private fun com.dropbox.core.v2.files.Metadata.toCloudFile(account: CloudAccount): CloudFile {
+        val parentPath = this.pathLower?.substringBeforeLast("/", "") ?: ""
+        val stableId = when (this) {
+            is FileMetadata -> this.id
+            is FolderMetadata -> this.id
+            else -> this.pathLower ?: ""
+        }
         return CloudFile(
-            id = this.pathLower ?: "",
+            id = stableId, 
             name = this.name,
             size = if (this is FileMetadata) this.size else null,
             mimeType = if (this is FolderMetadata) "application/vnd.google-apps.folder" else "application/octet-stream",
             provider = "dropbox",
             accountId = account.id,
             path = this.pathDisplay ?: "",
+            parentId = if (parentPath.isEmpty()) null else parentPath,
             isFolder = this is FolderMetadata,
             modifiedTime = if (this is FileMetadata) this.clientModified.time else null,
+            isTrashed = false,
+            ownerDisplayName = account.name,
             thumbnailLink = null,
             webViewLink = "https://www.dropbox.com/home${this.pathDisplay}"
         )
@@ -67,7 +102,7 @@ class DropboxProvider @Inject constructor(
         destination: File,
         onProgress: ((Float) -> Unit)?
     ): Result<Unit> {
-        val client = authManager.getClient() ?: return Result.failure(Exception("Not logged in"))
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         return try {
             client.files().download(fileId).use { downloader ->
                 val total = downloader.result.size
@@ -98,7 +133,7 @@ class DropboxProvider @Inject constructor(
         folderId: String?,
         onProgress: ((Float) -> Unit)?
     ): Result<CloudFile> {
-        val client = authManager.getClient() ?: return Result.failure(Exception("Not logged in"))
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         return try {
             val path = if (folderId == null) "/$fileName" else "$folderId/$fileName"
             val total = source.length()
@@ -131,7 +166,7 @@ class DropboxProvider @Inject constructor(
     }
 
     override suspend fun deleteFile(account: CloudAccount, fileId: String): Result<Unit> {
-        val client = authManager.getClient() ?: return Result.failure(Exception("Not logged in"))
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         return try {
             client.files().deleteV2(fileId)
             Result.success(Unit)
@@ -141,11 +176,15 @@ class DropboxProvider @Inject constructor(
     }
 
     override suspend fun renameFile(account: CloudAccount, fileId: String, newName: String): Result<CloudFile> {
-        val client = authManager.getClient() ?: return Result.failure(Exception("Not logged in"))
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         return try {
-            val parentPath = fileId.substringBeforeLast("/", "")
+            val currentPath = if (fileId.startsWith("/")) fileId else {
+                client.files().getMetadata(fileId).pathLower
+            }
+            
+            val parentPath = currentPath.substringBeforeLast("/", "")
             val newPath = if (parentPath.isEmpty()) "/$newName" else "$parentPath/$newName"
-            val result = client.files().moveV2(fileId, newPath)
+            val result = client.files().moveV2(currentPath, newPath)
             Result.success(result.metadata.toCloudFile(account))
         } catch (e: Exception) {
             Result.failure(e)
@@ -153,9 +192,13 @@ class DropboxProvider @Inject constructor(
     }
 
     override suspend fun createFolder(account: CloudAccount, name: String, parentId: String?): Result<CloudFile> {
-        val client = authManager.getClient() ?: return Result.failure(Exception("Not logged in"))
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         return try {
-            val path = if (parentId == null) "/$name" else "$parentId/$name"
+            val parentPath = if (parentId == null) "" else if (parentId.startsWith("/")) parentId else {
+                client.files().getMetadata(parentId).pathLower
+            }
+            
+            val path = "$parentPath/$name"
             val metadata = client.files().createFolderV2(path).metadata
             Result.success(metadata.toCloudFile(account))
         } catch (e: Exception) {
@@ -164,7 +207,7 @@ class DropboxProvider @Inject constructor(
     }
 
     override suspend fun getQuota(account: CloudAccount): Result<QuotaInfo> {
-        val client = authManager.getClient() ?: return Result.failure(Exception("Not logged in"))
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         return try {
             val usage = client.users().getSpaceUsage()
             Result.success(QuotaInfo(usedSpace = usage.used, totalSpace = usage.allocation.individualValue.allocated))

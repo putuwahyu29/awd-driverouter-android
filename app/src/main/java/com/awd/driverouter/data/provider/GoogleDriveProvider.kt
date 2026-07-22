@@ -36,56 +36,105 @@ class GoogleDriveProvider @Inject constructor(
         ).setApplicationName("Awd DriveRouter").build()
     }
 
-    override suspend fun listFiles(account: CloudAccount, folderId: String?): List<CloudFile> {
+    override suspend fun listFiles(
+        account: CloudAccount, 
+        folderId: String?,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val service = getDriveService(account)
         val query = if (folderId == null) "'root' in parents" else "'$folderId' in parents"
-        return executeQuery(service, account, "$query and trashed = false")
+        return executeQuery(service, account, "$query and trashed = false", onPartialResult)
     }
 
-    override suspend fun listStarred(account: CloudAccount): List<CloudFile> {
+    override suspend fun listStarred(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val service = getDriveService(account)
-        return executeQuery(service, account, "starred = true and trashed = false")
+        return executeQuery(service, account, "starred = true and trashed = false", onPartialResult)
     }
 
-    override suspend fun listRecent(account: CloudAccount): List<CloudFile> {
+    override suspend fun listRecent(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val service = getDriveService(account)
         return try {
-            val result = service.files().list()
-                .setQ("trashed = false")
-                .setOrderBy("viewedByMeTime desc")
-                .setPageSize(30)
-                .setFields("files(id, name, size, mimeType, modifiedTime, thumbnailLink, webViewLink, starred, viewedByMeTime)")
-                .execute()
+            val allFiles = mutableListOf<CloudFile>()
+            var pageToken: String? = null
+            
+            do {
+                val result = service.files().list()
+                    .setQ("trashed = false")
+                    .setOrderBy("viewedByMeTime desc")
+                    .setPageSize(50)
+                    .setPageToken(pageToken)
+                    .setFields("nextPageToken, files(id, name, size, mimeType, modifiedTime, thumbnailLink, webViewLink, starred, viewedByMeTime, parents, trashed, explicitlyTrashed)")
+                    .execute()
 
-            result.files?.map { it.toCloudFile(account) } ?: emptyList()
+                val currentBatch = result.files?.map { it.toCloudFile(account) } ?: emptyList()
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                pageToken = result.nextPageToken
+            } while (pageToken != null)
 
+            Result.success(allFiles)
         } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+            Result.failure(e)
         }
     }
 
-    override suspend fun listShared(account: CloudAccount): List<CloudFile> {
+    override suspend fun listShared(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
         val service = getDriveService(account)
-        return executeQuery(service, account, "sharedWithMe = true and trashed = false")
+        return executeQuery(service, account, "sharedWithMe = true and trashed = false", onPartialResult)
     }
 
-    private fun executeQuery(service: Drive, account: CloudAccount, query: String): List<CloudFile> {
-        return try {
-            val result = service.files().list()
-                .setQ(query)
-                .setFields("files(id, name, size, mimeType, modifiedTime, thumbnailLink, webViewLink, starred, shared, permissions)")
-                .execute()
+    override suspend fun listTrashed(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        val service = getDriveService(account)
+        return executeQuery(service, account, "trashed = true", onPartialResult)
+    }
 
-            result.files?.map { it.toCloudFile(account) } ?: emptyList()
+    private suspend fun executeQuery(
+        service: Drive, 
+        account: CloudAccount, 
+        query: String,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> {
+        return try {
+            val allFiles = mutableListOf<CloudFile>()
+            var pageToken: String? = null
+            
+            do {
+                val result = service.files().list()
+                    .setQ(query)
+                    .setPageSize(100)
+                    .setPageToken(pageToken)
+                    .setFields("nextPageToken, files(id, name, size, mimeType, modifiedTime, thumbnailLink, webViewLink, starred, shared, permissions, parents, trashed, explicitlyTrashed)")
+                    .execute()
+
+                val currentBatch = result.files?.map { it.toCloudFile(account) } ?: emptyList()
+                allFiles.addAll(currentBatch)
+                onPartialResult?.invoke(currentBatch)
+                pageToken = result.nextPageToken
+            } while (pageToken != null)
+
+            Result.success(allFiles)
         } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+            Result.failure(e)
         }
     }
 
     private fun GoogleFile.toCloudFile(account: CloudAccount): CloudFile {
         val isPublic = this.permissions?.any { it.type == "anyone" } ?: false
+        val gParentId = this.parents?.firstOrNull()
+        val mappedParentId = if (gParentId == "root") null else gParentId
+        
         return CloudFile(
             id = this.id,
             name = this.name,
@@ -94,6 +143,7 @@ class GoogleDriveProvider @Inject constructor(
             provider = "google_drive",
             accountId = account.id,
             path = "",
+            parentId = mappedParentId,
             isFolder = this.mimeType == "application/vnd.google-apps.folder",
             modifiedTime = this.modifiedTime?.value,
             thumbnailLink = this.thumbnailLink,
@@ -101,8 +151,10 @@ class GoogleDriveProvider @Inject constructor(
             isStarred = this.starred ?: false,
             isShared = this.shared ?: false,
             isPublic = isPublic,
+            isTrashed = this.explicitlyTrashed ?: this.trashed ?: false,
             lastAccessedTime = this.viewedByMeTime?.value,
-            supportsNativeSharing = true
+            supportsNativeSharing = true,
+            isOwner = this.ownedByMe ?: true
         )
     }
 
@@ -160,7 +212,7 @@ class GoogleDriveProvider @Inject constructor(
     override suspend fun deleteFile(account: CloudAccount, fileId: String): Result<Unit> {
         val service = getDriveService(account)
         return try {
-            service.files().delete(fileId).execute()
+            service.files().update(fileId, GoogleFile().setTrashed(true)).execute()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -250,7 +302,6 @@ class GoogleDriveProvider @Inject constructor(
     override suspend fun getShareLink(account: CloudAccount, fileId: String): Result<String> {
         val service = getDriveService(account)
         return try {
-            // Ensure link sharing is on or at least get the link
             val file = service.files().get(fileId).setFields("webViewLink").execute()
             Result.success(file.webViewLink ?: "")
         } catch (e: Exception) {

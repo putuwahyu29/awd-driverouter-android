@@ -59,7 +59,7 @@ class FilesViewModel @Inject constructor(
     private val _currentFolderId = MutableStateFlow<String?>(null)
     val currentFolderId: StateFlow<String?> = _currentFolderId.asStateFlow()
 
-    private val _folderPath = MutableStateFlow(listOf(FolderInfo(null, context.getString(R.string.nav_files))))
+    private val _folderPath = MutableStateFlow(listOf(FolderInfo(null, context.getString(R.string.nav_home))))
     val folderPath: StateFlow<List<FolderInfo>> = _folderPath.asStateFlow()
 
 
@@ -81,7 +81,7 @@ class FilesViewModel @Inject constructor(
 
     init {
         // Initial load for files mode
-        loadFiles(null, context.getString(R.string.nav_files))
+        loadFiles(null, context.getString(R.string.nav_home))
     }
 
 
@@ -89,7 +89,7 @@ class FilesViewModel @Inject constructor(
         if (currentMode == mode && mode != "files") return
         currentMode = mode
         if (mode == "files") {
-            loadFiles(null, context.getString(R.string.nav_files))
+            loadFiles(null, context.getString(R.string.nav_home))
         } else {
             loadSpecialList(mode)
         }
@@ -104,6 +104,7 @@ class FilesViewModel @Inject constructor(
                 "recent" -> repository.getRecentFiles()
                 "starred" -> repository.getStarredFiles()
                 "shared" -> repository.getSharedFiles()
+                "trash" -> repository.getTrashedFiles()
                 else -> emptyFlow()
             }
             flow.collect { files ->
@@ -117,14 +118,18 @@ class FilesViewModel @Inject constructor(
         syncJob?.cancel()
         syncJob = viewModelScope.launch {
             _isRefreshing.value = true
-            val result = when (mode) {
-                "recent" -> repository.syncRecent()
-                "starred" -> repository.syncStarred()
-                "shared" -> repository.syncShared()
-                else -> Result.success(emptyList())
+            try {
+                val result = when (mode) {
+                    "recent" -> repository.syncRecent()
+                    "starred" -> repository.syncStarred()
+                    "shared" -> repository.syncShared()
+                    "trash" -> repository.syncTrash()
+                    else -> Result.success(emptyList())
+                }
+                result.onFailure { _errorEvent.emit(it.message ?: "Sync error") }
+            } finally {
+                _isRefreshing.value = false
             }
-            result.onFailure { _errorEvent.emit(it.message ?: "Sync error") }
-            _isRefreshing.value = false
         }
     }
 
@@ -149,16 +154,30 @@ class FilesViewModel @Inject constructor(
         val folderId = _currentFolderId.value
         syncJob = viewModelScope.launch {
             _isRefreshing.value = true
-            if (_rawFilesState.value !is FilesUiState.Success || (_rawFilesState.value as FilesUiState.Success).files.isEmpty()) {
+            val currentState = _rawFilesState.value
+            val isEmpty = currentState !is FilesUiState.Success || currentState.files.isEmpty()
+            
+            if (isEmpty) {
                 _rawFilesState.value = FilesUiState.Loading
             }
-            repository.syncFiles(folderId).onFailure { error ->
-                _errorEvent.emit(context.getString(R.string.sync_failed, error.message))
+            
+            try {
+                repository.syncFiles(folderId).onFailure { error ->
+                    _errorEvent.emit(context.getString(R.string.sync_failed, error.message))
+                    if (_rawFilesState.value is FilesUiState.Loading) {
+                        _rawFilesState.value = FilesUiState.Error(error.message ?: context.getString(R.string.error))
+                    }
+                }
+            } finally {
+                _isRefreshing.value = false
+                // Ensure we transition out of loading if we are still there and sync finished
                 if (_rawFilesState.value is FilesUiState.Loading) {
-                    _rawFilesState.value = FilesUiState.Error(error.message ?: context.getString(R.string.error))
+                    // Fetch from local one last time to be sure
+                    repository.getAllFiles(folderId).first().let { 
+                        _rawFilesState.value = FilesUiState.Success(it)
+                    }
                 }
             }
-            _isRefreshing.value = false
         }
     }
 
@@ -182,6 +201,7 @@ class FilesViewModel @Inject constructor(
                         "recent" -> repository.getRecentFiles()
                         "starred" -> repository.getStarredFiles()
                         "shared" -> repository.getSharedFiles()
+                        "trash" -> repository.getTrashedFiles()
                         else -> emptyFlow()
                     }
                     flow.collect { files ->
@@ -328,6 +348,7 @@ class FilesViewModel @Inject constructor(
             
             provider.shareFile(account, file.id, email, role).onSuccess {
                 _errorEvent.emit(context.getString(R.string.share_success, email))
+                refresh()
             }.onFailure {
                 _errorEvent.emit(context.getString(R.string.share_failed, it.message))
             }
@@ -336,7 +357,10 @@ class FilesViewModel @Inject constructor(
 
     fun setGeneralAccess(file: CloudFile, isPublic: Boolean) {
         viewModelScope.launch {
-            repository.updateGeneralAccess(file, isPublic).onFailure {
+            repository.updateGeneralAccess(file, isPublic).onSuccess {
+                // Refresh to update UI state
+                refresh()
+            }.onFailure {
                 _errorEvent.emit(it.message ?: "Gagal mengubah akses umum")
             }
         }

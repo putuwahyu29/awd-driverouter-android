@@ -31,14 +31,17 @@ class WebDavProvider @Inject constructor(
         return url
     }
 
-    override suspend fun listFiles(account: CloudAccount, folderId: String?): List<CloudFile> = withContext(Dispatchers.IO) {
+    override suspend fun listFiles(
+        account: CloudAccount, 
+        folderId: String?,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = withContext(Dispatchers.IO) {
         try {
             val sardine = getSardine(account)
             val path = folderId ?: getBaseUrl(account)
             val resources = sardine.list(path)
             
-            // First item in list is usually the directory itself
-            resources.drop(1).map { res ->
+            val files = resources.drop(1).map { res ->
                 CloudFile(
                     id = res.href.toString(),
                     name = res.displayName ?: res.name ?: "Unknown",
@@ -53,9 +56,10 @@ class WebDavProvider @Inject constructor(
                     webViewLink = res.href.toString()
                 )
             }
+            onPartialResult?.invoke(files)
+            Result.success(files)
         } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+            Result.failure(e)
         }
     }
 
@@ -67,7 +71,6 @@ class WebDavProvider @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val sardine = getSardine(account)
-            // Get size for progress
             val resources = sardine.list(fileId)
             val total = resources.firstOrNull()?.contentLength ?: 0L
             
@@ -173,12 +176,26 @@ class WebDavProvider @Inject constructor(
     }
 
     override suspend fun getQuota(account: CloudAccount): Result<QuotaInfo> = withContext(Dispatchers.IO) {
-        // WebDAV quota support varies by server. Many (like Nextcloud) support it via specific properties.
-        // For simplicity, we'll return failure or a dummy if not supported.
         Result.failure(Exception("Quota not supported on this WebDAV server"))
     }
 
-    override suspend fun listStarred(account: CloudAccount): List<CloudFile> = emptyList()
-    override suspend fun listRecent(account: CloudAccount): List<CloudFile> = emptyList()
-    override suspend fun listShared(account: CloudAccount): List<CloudFile> = emptyList()
+    override suspend fun listStarred(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
+
+    override suspend fun listRecent(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
+
+    override suspend fun listShared(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
+
+    override suspend fun listTrashed(
+        account: CloudAccount,
+        onPartialResult: (suspend (List<CloudFile>) -> Unit)?
+    ): Result<List<CloudFile>> = Result.success(emptyList())
 }
