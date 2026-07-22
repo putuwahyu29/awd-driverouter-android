@@ -9,6 +9,18 @@ android {
     namespace = "com.awd.driverouter"
     compileSdk = 34
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath != null && file(keystorePath).exists()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEY_STORE_PASSWORD")
+                keyAlias = System.getenv("ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.awd.driverouter"
         minSdk = 26
@@ -30,6 +42,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
         }
     }
 
@@ -86,6 +103,16 @@ android {
     configurations.all {
         exclude(group = "xmlpull", module = "xmlpull")
         exclude(group = "xpp3", module = "xpp3")
+    }
+}
+
+// Kustomisasi Nama APK Output
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters.find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }?.identifier ?: "universal"
+            output.outputFileName.set("awd-driverouter-v${android.defaultConfig.versionName}-$abi-${variant.name}.apk")
+        }
     }
 }
 
