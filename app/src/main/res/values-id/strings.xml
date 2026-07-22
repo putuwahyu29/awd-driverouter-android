@@ -1,0 +1,267 @@
+<resources>
+    <string name="app_name">Awd DriveRouter</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Beranda</string>
+    <string name="nav_starred">Berbintang</string>
+    <string name="nav_files">File</string>
+    <string name="nav_transfers">Transfer</string>
+    <string name="nav_shared">Dibagikan</string>
+    <string name="nav_accounts">Akun</string>
+    <string name="nav_settings">Pengaturan</string>
+    <string name="no_accounts_connected">Belum ada akun terhubung</string>
+
+    <!-- Files Screen -->
+    <string name="search_placeholder">Cari di semua cloud…</string>
+    <string name="empty_files">Cloud Anda kosong</string>
+    <string name="connect_prompt">Hubungkan akun untuk melihat file Anda</string>
+    <string name="no_results">Tidak ada file yang cocok</string>
+    <string name="new_folder">Folder Baru</string>
+    <string name="upload_file">Unggah File</string>
+    <string name="upload_files">Unggah Beberapa File</string>
+    <string name="upload_folder">Unggah Folder</string>
+    <string name="download">Unduh</string>
+    <string name="rename">Ganti Nama</string>
+    <string name="delete">Hapus</string>
+    <string name="details">Detail</string>
+    <string name="create_folder_title">Buat Folder Baru</string>
+    <string name="folder_name_label">Nama Folder</string>
+    <string name="file_deleted">File dihapus</string>
+    <string name="file_renamed">File diubah namanya</string>
+    <string name="delete_failed">Gagal menghapus: %1$s</string>
+    <string name="folder_created">Folder dibuat</string>
+    <string name="folder_create_failed">Gagal membuat folder: %1$s</string>
+    <string name="upload_started">Unggahan dimulai</string>
+    <string name="create_upload_title">Buat / Unggah</string>
+    <string name="retry">Coba Lagi</string>
+    <string name="open_in_web">Buka di Web</string>
+    <string name="preview_not_supported">Pratinjau tidak didukung untuk tipe ini</string>
+    <string name="close">Tutup</string>
+    <string name="share_failed">Gagal membagikan: %1$s</string>
+    <string name="share">Bagikan</string>
+    <string name="share_link">Bagikan Tautan</string>
+    <string name="back">Kembali</string>
+    <string name="ok">OK</string>
+    <string name="app_description">Awd DriveRouter adalah alat manajemen cloud sumber terbuka yang memungkinkan Anda menggabungkan beberapa penyedia penyimpanan ke dalam satu antarmuka yang terpadu.</string>
+    <string name="view_github">Lihat Repositori GitHub</string>
+    <string name="update_available">Update Tersedia!</string>
+    <string name="update_message">Versi %1$s tersedia di GitHub.\n\n%2$s</string>
+    <string name="later">Nanti</string>
+    <string name="app_up_to_date">Aplikasi Terbaru</string>
+    <string name="up_to_date_message">Anda sudah menggunakan versi terbaru (%1$s).</string>
+    <string name="error">Kesalahan</string>
+    <string name="error_check_update">Gagal mengecek pembaruan</string>
+
+    <string name="strategy_prompt">Pilih bagaimana aplikasi mengalokasikan file saat Anda mengunggah ke \'Super Cloud\'.</string>
+    <string name="strategy_mode">Mode Strategi</string>
+    <string name="strategy_priority">Atur Urutan Prioritas</string>
+    <string name="strategy_desc_round_robin">Mengisi setiap akun secara bergantian.</string>
+    <string name="strategy_desc_weighted">Akun dengan kapasitas lebih besar akan lebih sering dipilih.</string>
+    <string name="strategy_desc_most_free">Memilih akun dengan sisa byte terbanyak.</string>
+    <string name="strategy_desc_least_used">Memilih akun yang paling kosong secara persentase.</string>
+    <string name="strategy_desc_custom">Mengikuti urutan yang Anda tentukan di bawah.</string>
+    <string name="strategy_desc_mirror">File diunggah ke setiap akun yang aktif secara bersamaan.</string>
+    <string name="strategy_desc_manual">Selalu menggunakan akun teratas di daftar.</string>
+
+    <string name="backup_empty">Belum ada folder yang dipantau</string>
+    <string name="start_backup">Mulai Pencadangan</string>
+    <string name="monitored_folders">Folder yang Dipantau</string>
+    <string name="delete_config_title">Hapus Konfigurasi</string>
+    <string name="delete_config_msg">Apakah Anda yakin ingin menghapus konfigurasi pencadangan untuk folder \'%1$s\'?</string>
+    <string name="add_backup_config">Tambah Konfigurasi Backup</string>
+    <string name="edit_config">Edit Konfigurasi</string>
+    <string name="select_local_folder">Pilih Folder Lokal</string>
+    <string name="change_folder">Ganti Folder</string>
+    <string name="cloud_folder_name">Nama Folder di Cloud</string>
+    <string name="sync_mode">Mode Sinkronisasi</string>
+    <string name="one_way_backup">"1 Arah "</string>
+    <string name="two_way_sync">2 Arah</string>
+    <string name="cloud_allocation_strategy">Strategi Alokasi Cloud</string>
+    <string name="wifi_only_desc">Hanya gunakan Wi-Fi</string>
+    <string name="save">Simpan</string>
+    <string name="update">Perbarui</string>
+    <string name="last_backup">Terakhir: %1$s</string>
+    <string name="never_backed_up">Belum pernah</string>
+    <string name="connect_account_first">Hubungkan akun dulu</string>
+
+    <string name="open_native">Buka di Aplikasi HP</string>
+    <string name="downloading_to_open">Mendownload file untuk dibuka…</string>
+    <string name="downloading_multiple">Mengunduh %1$d file…</string>
+    <string name="share_success">Berhasil membagikan file ke %1$s</string>
+    <string name="general_access">Akses Umum</string>
+    <string name="restricted">Dibatasi</string>
+    <string name="restricted_desc">Hanya orang yang ditambahkan yang dapat membuka dengan link ini</string>
+    <string name="anyone_with_link">Siapa saja yang memiliki link</string>
+    <string name="anyone_with_link_desc">Siapa saja di internet yang memiliki link ini dapat melihat</string>
+    <string name="change_access">Ubah</string>
+    <string name="send">Kirim</string>
+    <string name="manage_access">Kelola Akses</string>
+
+    <string name="offline_message">Anda sedang offline. Beberapa fitur mungkin tidak tersedia.</string>
+    <string name="account_name_label">Nama Akun (Opsional)</string>
+    <string name="account_name_placeholder">Contoh: Akun Kantor</string>
+    <string name="set_main">Set Utama</string>
+    <string name="connect_account">Hubungkan Akun</string>
+    <string name="main_account_changed">Akun utama berhasil diubah</string>
+    <string name="share_unsupported">Provider ini tidak mendukung fitur berbagi native</string>
+    <string name="add">Tambah</string>
+    <string name="menu">Menu</string>
+    <string name="sync">Sinkronisasi</string>
+    <string name="clear_search">Hapus Pencarian</string>
+    <string name="view_list">Tampilan Daftar</string>
+    <string name="view_grid">Tampilan Grid</string>
+    <string name="info">Info</string>
+    <string name="pdf_preview_loading">Pratinjau PDF (Mendownload…)</string>
+    <string name="error_pdf">Gagal memuat PDF: %1$s</string>
+    <string name="pdf_page">Halaman %1$d</string>
+    <string name="settings">Pengaturan</string>
+    <string name="copy">Salin</string>
+    <string name="main_account_badge">UTAMA</string>
+    <string name="remove">Hapus</string>
+    <string name="help">Bantuan</string>
+    <string name="connect_account_title">Hubungkan Akun %1$s</string>
+    <string name="server_url_label">URL Server (cth: https://dav.com/)</string>
+    <string name="host_address_label">Alamat Host</string>
+    <string name="username_label">Username</string>
+    <string name="password_label">Password</string>
+    <string name="port_label">Port (Default: 22)</string>
+    <string name="client_id_label">Client ID</string>
+    <string name="client_id_web_label">Client ID (Web Application)</string>
+    <string name="client_id_app_label">Application (client) ID</string>
+    <string name="app_key_label">App Key</string>
+    <string name="client_secret_label">Client Secret</string>
+    <string name="redirect_uri_label">Redirect URI</string>
+    <string name="redirect_uri_msauth_label">Redirect URI (msauth://...)</string>
+
+    <string name="google_guide">1. Buka Google Cloud Console.\n2. Aktifkan Drive API.\n3. Buat OAuth 2.0 Client ID (Web Application).\n4. Salin \'Client ID\' ke kolom di bawah ini.</string>
+    <string name="onedrive_guide">1. Buka Azure Portal -> App Registrations.\n2. Salin \'Application (client) ID\'.\n3. Di \'Authentication\', tambahkan platform Android dengan Package &amp; SHA1 di atas.</string>
+    <string name="dropbox_guide">1. Buka Dropbox App Console.\n2. Buat App baru (Scoped access).\n3. Berikan izin \'files.content.read/write\'.\n4. Salin \'App Key\' di bawah.</string>
+    <string name="box_guide">1. Buka Box Developer Console.\n2. Buat Custom App (OAuth 2.0).\n3. Salin \'Client ID\' dan \'Client Secret\' ke kolom di bawah.\n4. Set Redirect URI ke \'http://localhost\'.</string>
+    <string name="webdav_guide">1. Masukkan URL server WebDAV lengkap.\n2. Masukkan Username dan Password.\n3. Contoh Nextcloud: \'https://domain.com/remote.php/dav/files/user/\'</string>
+    <string name="sftp_guide">1. Masukkan alamat IP atau Host server.\n2. Masukkan Port (default: 22).\n3. Masukkan Username dan Password SSH.</string>
+
+    <string name="to_cloud">Ke Cloud: %1$s</string>
+    <string name="default_folder_name">Folder</string>
+    <string name="path_label">Path: %1$s</string>
+    <string name="no_internet">Tidak ada koneksi internet</string>
+    <string name="error_sync_generic">Gagal sinkronisasi: %1$s</string>
+    <string name="files_deleted_count">%1$d file berhasil dihapus</string>
+    <string name="sync_failed">Gagal sinkronisasi: %1$s</string>
+    <string name="rename_failed">Gagal ganti nama: %1$s</string>
+
+    <string name="exit_confirm">Tekan sekali lagi untuk keluar</string>
+
+    <string name="sort_name">Nama (A-Z)</string>
+    <string name="sort_date">Terbaru</string>
+    <string name="sort_size">Ukuran</string>
+    <string name="sort">Urutkan</string>
+    <string name="selected_count">%1$d dipilih</string>
+
+    <!-- Details -->
+    <string name="filter_docs">Dokumen</string>
+    <string name="detail_name">Nama</string>
+    <string name="detail_type">Tipe</string>
+    <string name="detail_size">Ukuran</string>
+    <string name="detail_owner">Pemilik</string>
+    <string name="detail_modified">Terakhir Diubah</string>
+
+    <!-- Accounts Screen -->
+    <string name="connected_accounts">Akun Terhubung</string>
+    <string name="add_account">Hubungkan Akun</string>
+    <string name="add_another">Tambah Akun Lain</string>
+    <string name="remove_account">Hapus Akun</string>
+    <string name="storage_used">%1$s terpakai dari %2$s</string>
+    <string name="account_added">Akun %1$s ditambahkan</string>
+    <string name="account_removed">Akun dihapus</string>
+    <string name="login_failed">Login gagal: %1$s</string>
+    <string name="login_failed_provider">Login gagal untuk %1$s. Silakan periksa kredensial atau konfigurasi Anda.</string>
+    <string name="error_google_10">Kesalahan Konfigurasi: Silakan periksa pengaturan SHA-1 dan Nama Paket di Google Cloud Console.</string>
+    <string name="error_google_7">Masalah Jaringan: Silakan periksa koneksi internet Anda.</string>
+    <string name="error_google_unknown">Login gagal. Kode error: %1$s</string>
+    <string name="sign_in_cancelled">Login dibatalkan</string>
+    <string name="google_drive">Google Drive</string>
+    <string name="onedrive">OneDrive</string>
+    <string name="dropbox">Dropbox</string>
+    <string name="box">Box</string>
+    <string name="webdav">WebDAV</string>
+    <string name="sftp">SFTP</string>
+    <string name="copied_to_clipboard">%1$s disalin ke papan klip</string>
+    <string name="configure_provider">Konfigurasi %1$s</string>
+
+    <!-- Settings Screen -->
+    <string name="personalization">Personalisasi</string>
+    <string name="language">Bahasa</string>
+    <string name="theme">Tema Aplikasi</string>
+    <string name="upload_strategy">Strategi Unggah</string>
+    <string name="strategy_desc">Pilih bagaimana file didistribusikan</string>
+    <string name="setup_guide">Panduan Setup</string>
+    <string name="registration_info">Info Pendaftaran</string>
+    <string name="package_name">Nama Paket</string>
+    <string name="sha1_fingerprint">Sidik Jari SHA-1 (HEX)</string>
+    <string name="sha1_base64_fingerprint">Sidik Jari SHA-1 (Base64)</string>
+    <string name="theme_light">Terang</string>
+    <string name="theme_dark">Gelap</string>
+    <string name="theme_system">Sistem</string>
+    <string name="language_en">English</string>
+    <string name="language_id">Bahasa Indonesia</string>
+
+    <string name="strategy_round_robin">Round Robin (Bergiliran)</string>
+    <string name="strategy_weighted">Weighted (Berdasarkan Kapasitas)</string>
+    <string name="strategy_most_free">Ruang Kosong Terbanyak</string>
+    <string name="strategy_least_used">Penggunaan Terendah (%)</string>
+    <string name="strategy_custom">Urutan Kustom</string>
+    <string name="strategy_mirror">Mirror (Unggah ke SEMUA)</string>
+    <string name="strategy_manual">Manual (Akun Utama)</string>
+
+    <string name="security">Keamanan</string>
+    <string name="app_lock">Kunci Aplikasi</string>
+    <string name="app_lock_desc">Amankan aplikasi dengan Biometrik/PIN</string>
+    <string name="backup">Cadangan</string>
+    <string name="auto_backup">Cadangan Otomatis</string>
+    <string name="backup_wifi_only">Hanya WiFi</string>
+    <string name="backup_wifi_desc">Unggah hanya saat menggunakan WiFi</string>
+
+    <string name="about">Tentang</string>
+    <string name="version">Versi %1$s</string>
+    <string name="github_repo">Repositori GitHub</string>
+    <string name="check_updates">Periksa Pembaruan</string>
+    <string name="developed_by">Dikembangkan oleh putuwahyu29</string>
+
+    <!-- Transfers Screen -->
+    <string name="transfers_title">Transfer</string>
+    <string name="no_transfers">Tidak ada transfer terbaru</string>
+    <string name="clear_history">Hapus Riwayat</string>
+    <string name="clear_history_confirm">Apakah Anda yakin ingin menghapus semua riwayat transfer yang sudah selesai atau gagal?</string>
+    <string name="header_active">Sedang Berjalan (%1$d)</string>
+    <string name="header_completed">Selesai (%1$d)</string>
+    <string name="header_failed">Gagal (%1$d)</string>
+    <string name="status_pending">Menunggu</string>
+    <string name="status_running">Berjalan</string>
+    <string name="status_completed">Selesai</string>
+    <string name="status_failed">Gagal</string>
+
+    <!-- Dialogs -->
+    <string name="confirm_delete">Apakah Anda yakin ingin menghapus file ini?</string>
+    <string name="confirm_remove_account">Putuskan sambungan akun ini?</string>
+    <string name="cancel">Batal</string>
+    <string name="confirm">Konfirmasi</string>
+    <string name="authenticating">Mengautentikasi…</string>
+    <string name="save_config">Simpan Konfigurasi</string>
+    <string name="processing">Memproses…</string>
+
+    <!-- Notifications -->
+    <string name="transfer_channel_name">Transfer File</string>
+    <string name="transfer_channel_desc">Menampilkan progres unggahan dan unduhan file</string>
+    <string name="uploading_file">Mengunggah %1$s…</string>
+    <string name="downloading_file">Mengunduh %1$s…</string>
+    <string name="transfer_complete">Transfer selesai</string>
+    <string name="transfer_failed">Transfer gagal</string>
+    <string name="add_collaborator">Tambah kolaborator</string>
+    <string name="permission_viewer">Pelihat</string>
+    <string name="permission_editor">Editor</string>
+    <string name="copy_link_done">Link disalin ke papan klip</string>
+    <string name="filter_all">Semua</string>
+    <string name="filter_images">Gambar</string>
+    <string name="filter_videos">Video</string>
+    <string name="filter_audio">Audio</string>
+</resources>
