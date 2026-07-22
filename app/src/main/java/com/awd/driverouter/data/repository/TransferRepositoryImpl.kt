@@ -124,8 +124,6 @@ class TransferRepositoryImpl @Inject constructor(
     }
 
     private fun enqueueWork(transferId: String, data: Data) {
-        Log.d("TransferRepo", "Enqueuing work for transfer: $transferId")
-        
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()

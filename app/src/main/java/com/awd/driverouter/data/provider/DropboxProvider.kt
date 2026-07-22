@@ -1,6 +1,5 @@
 package com.awd.driverouter.data.provider
 
-import android.util.Log
 import com.awd.driverouter.data.remote.DropboxAuthManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
@@ -26,7 +25,6 @@ class DropboxProvider @Inject constructor(
         val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
         val path = folderId ?: ""
         return try {
-            Log.d("DropboxSync", "Starting listFiles for ${account.email} (ID: ${account.id}) at path: '$path'")
             val allFiles = mutableListOf<CloudFile>()
             
             var result = client.files().listFolderBuilder(path)
@@ -35,7 +33,6 @@ class DropboxProvider @Inject constructor(
             
             while (true) {
                 val currentBatch = result.entries.map { it.toCloudFile(account) }
-                Log.d("DropboxSync", "Found ${currentBatch.size} entries in batch for ${account.email}")
                 allFiles.addAll(currentBatch)
                 onPartialResult?.invoke(currentBatch)
                 
@@ -45,7 +42,6 @@ class DropboxProvider @Inject constructor(
             
             Result.success(allFiles)
         } catch (e: Exception) {
-            Log.e("DropboxSync", "Error listing files for ${account.email}: ${e.message}", e)
             Result.failure(e)
         }
     }

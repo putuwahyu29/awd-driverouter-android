@@ -70,7 +70,6 @@ class MainActivity : AppCompatActivity() {
                         while (dbAccount == null && retryCount < 3) {
                             dbAccount = dropboxAuthManager.getCurrentAccount()
                             if (dbAccount == null) {
-                                android.util.Log.w("DropboxAuth", "Retry ${retryCount + 1} fetching account info...")
                                 kotlinx.coroutines.delay(1500)
                                 retryCount++
                             }

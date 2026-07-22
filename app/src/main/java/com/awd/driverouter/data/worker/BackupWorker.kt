@@ -8,7 +8,6 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.awd.driverouter.data.local.BackupDao
-import com.awd.driverouter.data.local.SyncMode
 import com.awd.driverouter.domain.manager.AllocationManager
 import com.awd.driverouter.domain.repository.CloudRepository
 import dagger.assisted.Assisted
@@ -29,14 +28,10 @@ class BackupWorker @AssistedInject constructor(
         val activeConfigs = backupDao.getActiveConfigs()
         if (activeConfigs.isEmpty()) return@withContext Result.success()
 
-        Log.d("BackupWorker", "Starting backup for ${activeConfigs.size} active configurations")
-        
         var hasFailure = false
 
         activeConfigs.forEach { config ->
             try {
-                Log.d("BackupWorker", "Processing backup: ${config.localFolderName} -> ${config.cloudFolderName}")
-                
                 val folderUri = Uri.parse(config.localFolderUri)
                 val rootFolder = DocumentFile.fromTreeUri(context, folderUri) 
                 if (rootFolder == null || !rootFolder.exists()) {
@@ -72,14 +67,8 @@ class BackupWorker @AssistedInject constructor(
                     }
 
                     // 2-Way Sync: Basic implementation (Download new files from cloud)
-                    if (config.syncMode == SyncMode.TWO_WAY) {
-                        repository.getFilesByAccount(cloudParentFolder.id, accountId).getOrNull()?.forEach { cloudFile ->
-                            val localExists = files.any { it.name == cloudFile.name }
-                            if (!localExists && !cloudFile.isFolder) {
-                                Log.d("BackupWorker", "2-Way: Found new file ${cloudFile.name} in cloud")
-                                // repository.downloadFile(cloudFile) // This would start a download transfer
-                            }
-                        }
+                    if (config.syncMode == com.awd.driverouter.data.local.SyncMode.TWO_WAY) {
+                        repository.getFilesByAccount(cloudParentFolder.id, accountId)
                     }
                 }
                 

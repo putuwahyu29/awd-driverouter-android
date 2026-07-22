@@ -31,7 +31,6 @@ class TransferWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val transferId = inputData.getString("transfer_id") ?: return Result.failure()
-        Log.d("TransferWorker", "Starting doWork for transfer: $transferId")
         
         val fileId = inputData.getString("file_id")
         val accountId = inputData.getString("account_id")
@@ -82,7 +81,6 @@ class TransferWorker @AssistedInject constructor(
                 if (!downloadsDir.exists()) downloadsDir.mkdirs()
                 
                 val destination = File(downloadsDir, fileName)
-                Log.d("TransferWorker", "Downloading $fileName to ${destination.absolutePath}")
                 
                 val result = provider.downloadFile(account, fileId, destination, progressCallback)
                 
@@ -101,7 +99,6 @@ class TransferWorker @AssistedInject constructor(
                 
                 if (!tempFile.exists()) return fail(transferId, "Temp file not found: $tempFilePath")
                 
-                Log.d("TransferWorker", "Uploading $fileName to $folderId")
                 val result = provider.uploadFile(account, tempFile, fileName, folderId, progressCallback)
                 tempFile.delete() 
                 

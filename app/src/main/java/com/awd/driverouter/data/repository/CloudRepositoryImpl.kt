@@ -144,7 +144,6 @@ class CloudRepositoryImpl @Inject constructor(
                     val provider = providers.find { it.providerId == account.provider }
                     if (provider != null) {
                         try {
-                            Log.d("CloudSync", "Starting sync for ${account.email} using provider ${provider.providerId}")
                             var hasClearedCache = false
                             
                             val files = withTimeoutOrNull(45000L) { // Increased timeout for multi-page sync
@@ -184,8 +183,6 @@ class CloudRepositoryImpl @Inject constructor(
                             
                             if (files == null) {
                                 Log.e("CloudRepository", "Sync failed or timeout for ${account.email} (${account.provider})")
-                            } else {
-                                Log.d("CloudSync", "Finished sync for ${account.email}. Total files: ${files.size}")
                             }
                             
                             files ?: emptyList<CloudFile>()

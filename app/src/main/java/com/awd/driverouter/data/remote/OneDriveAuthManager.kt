@@ -35,7 +35,6 @@ class OneDriveAuthManager @Inject constructor(
         }
         
         val redirectUri = credentialManager.getCredential(CredentialManager.ONEDRIVE_REDIRECT_URI)
-        Log.d("OneDriveAuth", "Initializing MSAL with ClientID: ${clientId.take(5)}... and RedirectURI: $redirectUri")
 
         val configFile = File(context.cacheDir, "msal_config_multi.json")
         val configJson = """
@@ -63,7 +62,6 @@ class OneDriveAuthManager @Inject constructor(
                 configFile,
                 object : IPublicClientApplication.IMultipleAccountApplicationCreatedListener {
                     override fun onCreated(application: IMultipleAccountPublicClientApplication) {
-                        Log.d("OneDriveAuth", "MSAL Application created successfully")
                         mMultipleAccountApp = application
                         continuation.resume(application)
                     }

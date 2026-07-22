@@ -15,13 +15,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import okhttp3.Call
 import okhttp3.ConnectionSpec
-import okhttp3.EventListener
-import okhttp3.Handshake
 import okhttp3.OkHttpClient
 import okhttp3.TlsVersion
-import java.io.IOException
 
 @Singleton
 class DropboxAuthManager @Inject constructor(
@@ -55,20 +51,6 @@ class DropboxAuthManager @Inject constructor(
         OkHttpClient.Builder()
             .connectionSpecs(listOf(modernSpec, compatibleSpec, ConnectionSpec.CLEARTEXT))
             .retryOnConnectionFailure(true)
-            .eventListener(object : EventListener() {
-                override fun dnsStart(call: Call, domainName: String) {
-                    android.util.Log.d("DropboxSSL", "DNS start: $domainName")
-                }
-                override fun secureConnectStart(call: Call) {
-                    android.util.Log.d("DropboxSSL", "SSL handshake start")
-                }
-                override fun secureConnectEnd(call: Call, handshake: Handshake?) {
-                    android.util.Log.d("DropboxSSL", "SSL handshake end: ${handshake?.tlsVersion}")
-                }
-                override fun callFailed(call: Call, ioe: IOException) {
-                    android.util.Log.e("DropboxSSL", "Call failed: ${ioe.message}")
-                }
-            })
             .build()
     }
 
@@ -93,19 +75,14 @@ class DropboxAuthManager @Inject constructor(
     suspend fun getCurrentAccount(): com.dropbox.core.v2.users.FullAccount? = withContext(kotlinx.coroutines.Dispatchers.IO) {
         val token = pendingToken ?: getAccessToken()
         if (token == null) {
-            android.util.Log.e("DropboxAuth", "No access token found for getCurrentAccount")
             return@withContext null
         }
         
         val client = createClient(token)
         
         try {
-            android.util.Log.d("DropboxAuth", "Fetching current account info...")
-            val account = client.users().currentAccount
-            android.util.Log.d("DropboxAuth", "Successfully fetched account: ${account.email}")
-            account
+            client.users().currentAccount
         } catch (e: Exception) {
-            android.util.Log.e("DropboxAuth", "Error fetching Dropbox account: ${e.message}", e)
             null
         }
     }
@@ -148,7 +125,6 @@ class DropboxAuthManager @Inject constructor(
     fun getClient(accountId: String): DbxClientV2? {
         val token = getAccessToken(accountId)
         if (token == null) {
-            android.util.Log.e("DropboxAuth", "No token found for account: $accountId")
             return null
         }
         return createClient(token)
