@@ -370,18 +370,30 @@ class FilesViewModel @Inject constructor(
 
     fun uploadFiles(uris: List<Uri>) {
         viewModelScope.launch {
-            val parentFolder = _folderPath.value.last().cloudFile
-            repository.uploadFiles(uris, parentFolder).onSuccess {
-                _errorEvent.emit(context.getString(R.string.upload_started))
+            try {
+                val parentFolder = _folderPath.value.last().cloudFile
+                repository.uploadFiles(uris, parentFolder).onSuccess {
+                    _errorEvent.emit(context.getString(R.string.upload_started))
+                }.onFailure {
+                    _errorEvent.emit(it.message ?: "Upload failed to start")
+                }
+            } catch (e: Throwable) {
+                _errorEvent.emit("System error starting upload: ${e.javaClass.simpleName}")
             }
         }
     }
 
     fun uploadFolder(uri: Uri) {
         viewModelScope.launch {
-            val parentFolder = _folderPath.value.last().cloudFile
-            repository.uploadFolder(uri, parentFolder).onSuccess {
-                _errorEvent.emit(context.getString(R.string.upload_started))
+            try {
+                val parentFolder = _folderPath.value.last().cloudFile
+                repository.uploadFolder(uri, parentFolder).onSuccess {
+                    _errorEvent.emit(context.getString(R.string.upload_started))
+                }.onFailure {
+                    _errorEvent.emit(it.message ?: "Upload failed to start")
+                }
+            } catch (e: Throwable) {
+                _errorEvent.emit("System error starting upload: ${e.javaClass.simpleName}")
             }
         }
     }

@@ -81,7 +81,7 @@ class GoogleDriveProvider @Inject constructor(
             } while (pageToken != null)
 
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -127,7 +127,7 @@ class GoogleDriveProvider @Inject constructor(
             } while (pageToken != null)
 
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -178,7 +178,7 @@ class GoogleDriveProvider @Inject constructor(
                 request.executeMediaAndDownloadTo(outputStream)
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -207,7 +207,7 @@ class GoogleDriveProvider @Inject constructor(
                 .execute()
                 
             Result.success(uploadedFile.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -217,7 +217,7 @@ class GoogleDriveProvider @Inject constructor(
         return try {
             service.files().update(fileId, GoogleFile().setTrashed(true)).execute()
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -230,7 +230,7 @@ class GoogleDriveProvider @Inject constructor(
                 .setFields("id, name, size, mimeType, modifiedTime")
                 .execute()
             Result.success(updatedFile.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -247,7 +247,7 @@ class GoogleDriveProvider @Inject constructor(
                 .setFields("id, name, mimeType")
                 .execute()
             Result.success(folder.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -258,7 +258,7 @@ class GoogleDriveProvider @Inject constructor(
             val about = service.about().get().setFields("storageQuota").execute()
             val quota = about.storageQuota
             Result.success(QuotaInfo(usedSpace = quota.usage ?: 0L, totalSpace = quota.limit ?: 0L))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -276,7 +276,7 @@ class GoogleDriveProvider @Inject constructor(
             }
             service.permissions().create(fileId, permission).execute()
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -298,7 +298,7 @@ class GoogleDriveProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -321,7 +321,7 @@ class GoogleDriveProvider @Inject constructor(
                 )
             }
             Result.success(domainPermissions)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -331,7 +331,7 @@ class GoogleDriveProvider @Inject constructor(
         return try {
             val file = service.files().get(fileId).setFields("webViewLink").execute()
             Result.success(file.webViewLink ?: "")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }

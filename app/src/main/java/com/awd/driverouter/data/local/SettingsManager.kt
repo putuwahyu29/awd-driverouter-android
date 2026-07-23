@@ -31,6 +31,12 @@ class SettingsManager @Inject constructor(
     private val _isAppLockEnabled = MutableStateFlow(prefs.getBoolean("app_lock_enabled", false))
     val isAppLockEnabled: StateFlow<Boolean> = _isAppLockEnabled
 
+    private val _downloadLocationUri = MutableStateFlow(prefs.getString("download_location_uri", null))
+    val downloadLocationUri: StateFlow<String?> = _downloadLocationUri
+
+    private val _downloadLocationName = MutableStateFlow(prefs.getString("download_location_name", null))
+    val downloadLocationName: StateFlow<String?> = _downloadLocationName
+
     private val _customAccountOrder = MutableStateFlow(loadCustomOrder())
     val customAccountOrder: StateFlow<List<String>> = _customAccountOrder
 
@@ -67,6 +73,15 @@ class SettingsManager @Inject constructor(
     fun setAppLockEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("app_lock_enabled", enabled).apply()
         _isAppLockEnabled.value = enabled
+    }
+
+    fun setDownloadLocation(uri: String?, name: String?) {
+        prefs.edit()
+            .putString("download_location_uri", uri)
+            .putString("download_location_name", name)
+            .apply()
+        _downloadLocationUri.value = uri
+        _downloadLocationName.value = name
     }
 
     private fun loadCustomOrder(): List<String> {

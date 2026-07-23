@@ -41,7 +41,7 @@ class DropboxProvider @Inject constructor(
             }
             
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -119,7 +119,7 @@ class DropboxProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -158,7 +158,7 @@ class DropboxProvider @Inject constructor(
                 val metadata = client.files().uploadBuilder(path).uploadAndFinish(progressStream)
                 Result.success(metadata.toCloudFile(account))
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -168,7 +168,7 @@ class DropboxProvider @Inject constructor(
         return try {
             client.files().deleteV2(fileId)
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -184,7 +184,7 @@ class DropboxProvider @Inject constructor(
             val newPath = if (parentPath.isEmpty()) "/$newName" else "$parentPath/$newName"
             val result = client.files().moveV2(currentPath, newPath)
             Result.success(result.metadata.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -199,7 +199,7 @@ class DropboxProvider @Inject constructor(
             val path = "$parentPath/$name"
             val metadata = client.files().createFolderV2(path).metadata
             Result.success(metadata.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -209,7 +209,7 @@ class DropboxProvider @Inject constructor(
         return try {
             val usage = client.users().getSpaceUsage()
             Result.success(QuotaInfo(usedSpace = usage.used, totalSpace = usage.allocation.individualValue.allocated))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -235,7 +235,7 @@ class DropboxProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -247,7 +247,7 @@ class DropboxProvider @Inject constructor(
             val links = client.sharing().listSharedLinksBuilder().withPath(path).withDirectOnly(true).start()
             val link = links.links.firstOrNull()?.url ?: client.sharing().createSharedLinkWithSettings(path).url
             Result.success(link)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }

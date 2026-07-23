@@ -1,5 +1,6 @@
 package com.awd.driverouter.data.provider
 
+import android.webkit.MimeTypeMap
 import com.awd.driverouter.data.local.CredentialManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
@@ -42,11 +43,18 @@ class WebDavProvider @Inject constructor(
             val resources = sardine.list(path)
             
             val files = resources.drop(1).map { res ->
+                val extension = res.name?.substringAfterLast('.', "")?.lowercase()
+                val guessedMime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                
                 CloudFile(
                     id = res.href.toString(),
                     name = res.displayName ?: res.name ?: "Unknown",
                     size = res.contentLength,
-                    mimeType = if (res.isDirectory) "application/vnd.google-apps.folder" else "application/octet-stream",
+                    mimeType = when {
+                        res.isDirectory -> "application/vnd.google-apps.folder"
+                        guessedMime != null -> guessedMime
+                        else -> "application/octet-stream"
+                    },
                     provider = providerId,
                     accountId = account.id,
                     path = res.path,
@@ -58,7 +66,7 @@ class WebDavProvider @Inject constructor(
             }
             onPartialResult?.invoke(files)
             Result.success(files)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -88,7 +96,7 @@ class WebDavProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -119,7 +127,7 @@ class WebDavProvider @Inject constructor(
                 isFolder = false,
                 modifiedTime = System.currentTimeMillis()
             ))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -128,7 +136,7 @@ class WebDavProvider @Inject constructor(
         try {
             getSardine(account).delete(fileId)
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -149,7 +157,7 @@ class WebDavProvider @Inject constructor(
                 isFolder = false,
                 modifiedTime = System.currentTimeMillis()
             ))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -170,7 +178,7 @@ class WebDavProvider @Inject constructor(
                 isFolder = true,
                 modifiedTime = System.currentTimeMillis()
             ))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }

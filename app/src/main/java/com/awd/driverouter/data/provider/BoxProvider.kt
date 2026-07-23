@@ -46,7 +46,7 @@ class BoxProvider @Inject constructor(
             }
             onPartialResult?.invoke(allFiles)
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -79,7 +79,7 @@ class BoxProvider @Inject constructor(
             val trashFiles = items.map { it.toCloudFile(account).copy(isTrashed = true) }
             onPartialResult?.invoke(trashFiles)
             Result.success(trashFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -129,7 +129,7 @@ class BoxProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -158,7 +158,7 @@ class BoxProvider @Inject constructor(
                 }
                 Result.success(uploadedFile.toCloudFile(account))
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -188,7 +188,7 @@ class BoxProvider @Inject constructor(
             info.setName(newName)
             boxFile.updateInfo(info)
             Result.success(info.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -205,7 +205,7 @@ class BoxProvider @Inject constructor(
             // Box Java SDK v4.11.1: BoxFolder.createFolder(String name)
             val newFolderInfo = BoxFolder(api, targetParentId).createFolder(name)
             Result.success(newFolderInfo.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -243,7 +243,7 @@ class BoxProvider @Inject constructor(
                 file.updateInfo(info)
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -260,7 +260,7 @@ class BoxProvider @Inject constructor(
             } else {
                 Result.success(info.sharedLink.url)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }

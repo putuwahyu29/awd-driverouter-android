@@ -15,7 +15,17 @@ class CredentialManager @Inject constructor(
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
-    private val prefs = EncryptedSharedPreferences.create(
+    private val prefs = try {
+        createEncryptedPrefs()
+    } catch (e: Exception) {
+        android.util.Log.e("CredentialManager", "Encryption failure, clearing corrupted data", e)
+        // Completely delete the corrupted file
+        context.deleteSharedPreferences("secure_credentials")
+        // Try again
+        createEncryptedPrefs()
+    }
+
+    private fun createEncryptedPrefs() = EncryptedSharedPreferences.create(
         context,
         "secure_credentials",
         masterKey,

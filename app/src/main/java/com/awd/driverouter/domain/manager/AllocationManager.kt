@@ -64,7 +64,10 @@ class AllocationManager @Inject constructor(
                 listOf(accounts[lastUsedIndex].id)
             }
 
-            AllocationStrategy.MANUAL -> listOf(accounts.first().id)
+            AllocationStrategy.MANUAL -> {
+                val mainAccount = accounts.find { it.isMainAccount } ?: accounts.first()
+                listOf(mainAccount.id)
+            }
         }
     }
 

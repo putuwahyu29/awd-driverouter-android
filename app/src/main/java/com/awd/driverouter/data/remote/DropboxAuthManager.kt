@@ -24,11 +24,23 @@ class DropboxAuthManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val credentialManager: CredentialManager
 ) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val masterKey by lazy {
+        MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+    }
 
-    private val prefs = EncryptedSharedPreferences.create(
+    private val prefs by lazy {
+        try {
+            createEncryptedPrefs()
+        } catch (e: Exception) {
+            android.util.Log.e("DropboxAuthManager", "Failed to initialize EncryptedSharedPreferences, clearing data", e)
+            context.deleteSharedPreferences("dropbox_secure_prefs")
+            createEncryptedPrefs()
+        }
+    }
+
+    private fun createEncryptedPrefs() = EncryptedSharedPreferences.create(
         context,
         "dropbox_secure_prefs",
         masterKey,

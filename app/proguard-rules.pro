@@ -11,6 +11,7 @@
 -dontwarn com.box.sdk.**
 -keep class com.eclipsesource.json.** { *; }
 -dontwarn com.eclipsesource.json.**
+-keepattributes *Annotation*
 
 # Microsoft Authentication Library (MSAL) & Graph
 -keep class com.microsoft.identity.client.** { *; }
@@ -18,6 +19,9 @@
 -keep class com.microsoft.graph.** { *; }
 -dontwarn com.microsoft.graph.**
 -dontwarn com.microsoft.device.display.DisplayMask
+-keep class com.microsoft.identity.common.** { *; }
+-keep interface com.microsoft.identity.client.** { *; }
+-keepattributes Signature, RuntimeVisibleAnnotations, AnnotationDefault
 
 # Dropbox SDK
 -keep class com.dropbox.core.** { *; }
@@ -63,6 +67,9 @@
 -keep class * extends androidx.room.RoomDatabase
 -keep class * extends androidx.room.Entity
 -keep class * extends androidx.room.Dao
+-keepclassmembers class ** {
+  @androidx.room.* *;
+}
 
 # Gson
 -keep class com.google.gson.** { *; }
@@ -79,7 +86,12 @@
 # Apache Http (transitive)
 -dontwarn org.apache.http.**
 -dontwarn javax.naming.**
+-dontwarn javax.security.auth.**
 -dontwarn org.ietf.jgss.**
+
+# Guava / WorkManager ListenableFuture
+-keep class com.google.common.util.concurrent.ListenableFuture { *; }
+-dontwarn com.google.common.util.concurrent.ListenableFuture
 
 # Reactor (transitive)
 -dontwarn reactor.blockhound.**
@@ -88,6 +100,21 @@
 # SSHJ / Sardine (WebDAV)
 -dontwarn com.hierynomus.sshj.**
 -dontwarn com.github.sardine.**
+-keep class com.github.sardine.** { *; }
+-keep class com.hierynomus.sshj.** { *; }
+-keep class net.schmizz.sshj.** { *; }
+
+# WorkManager & Hilt Workers
+-keep class androidx.work.WorkerParameters { *; }
+-keep class * extends androidx.work.ListenableWorker {
+    <init>(android.content.Context, androidx.work.WorkerParameters);
+}
+-keep @androidx.hilt.work.HiltWorker class * { *; }
+-keep class com.awd.driverouter.data.worker.** { *; }
+
+# Maintain Providers (for Dagger Multibinding and Reflection)
+-keep class com.awd.driverouter.data.provider.** { *; }
+-keep interface com.awd.driverouter.domain.provider.CloudProvider { *; }
 
 # Maintain Compose classes
 -keepclassmembers class * extends androidx.compose.ui.node.Owner {

@@ -1,13 +1,21 @@
 package com.awd.driverouter.data.worker
 
+import android.content.ContentValues
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.awd.driverouter.R
 import com.awd.driverouter.data.local.AccountDao
+import com.awd.driverouter.data.local.SettingsManager
 import com.awd.driverouter.data.local.TransferDao
 import com.awd.driverouter.data.local.toDomain
 import com.awd.driverouter.domain.model.TransferStatus
@@ -24,6 +32,7 @@ class TransferWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val transferDao: TransferDao,
     private val accountDao: AccountDao,
+    private val settingsManager: SettingsManager,
     private val providers: List<@JvmSuppressWildcards CloudProvider>
 ) : CoroutineWorker(context, params) {
 
@@ -37,6 +46,7 @@ class TransferWorker @AssistedInject constructor(
         val providerId = inputData.getString("provider") ?: return fail(transferId, "Missing provider ID")
         val type = inputData.getString("type") ?: "DOWNLOAD"
         val fileName = inputData.getString("file_name") ?: "file"
+        val mimeType = inputData.getString("mime_type") ?: "application/octet-stream"
 
         return try {
             val provider = providers.find { it.providerId == providerId } 
@@ -53,7 +63,13 @@ class TransferWorker @AssistedInject constructor(
             val builder = notificationHelper.getTransferNotificationBuilder(title, context.getString(R.string.processing))
             
             val notificationId = transferId.hashCode()
-            setForeground(ForegroundInfo(notificationId, builder.build()))
+            setForeground(
+                ForegroundInfo(
+                    notificationId,
+                    builder.build(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            )
 
             transferDao.updateProgress(transferId, 0f, TransferStatus.RUNNING)
             notificationHelper.updateProgress(builder, 0, notificationId)
@@ -78,26 +94,57 @@ class TransferWorker @AssistedInject constructor(
             if (type == "DOWNLOAD") {
                 if (fileId == null) return fail(transferId, "Missing file ID for download")
                 val expectedSize = inputData.getLong("expected_size", 0L)
-                val downloadsDir = File(context.getExternalFilesDir(null), "Downloads")
-                if (!downloadsDir.exists()) downloadsDir.mkdirs()
                 
-                val destination = File(downloadsDir, fileName)
+                val customUriStr = settingsManager.downloadLocationUri.value
+                val tempDir = File(context.cacheDir, "temp_downloads")
+                if (!tempDir.exists()) tempDir.mkdirs()
+                val tempFile = File(tempDir, fileName)
                 
-                val result = provider.downloadFile(account, fileId, destination, progressCallback)
+                val result = provider.downloadFile(account, fileId, tempFile, progressCallback)
                 
                 if (result.isSuccess) {
                     // Integrity Check: Verify file size
-                    val actualSize = destination.length()
+                    val actualSize = tempFile.length()
                     if (expectedSize > 0 && actualSize != expectedSize) {
-                        destination.delete() // Clean up corrupted file
+                        tempFile.delete() // Clean up corrupted file
                         return fail(transferId, "Integrity check failed: expected $expectedSize, got $actualSize", notificationId)
+                    }
+                    
+                    if (customUriStr != null) {
+                        // Save to Custom SAF Folder
+                        try {
+                            val treeUri = Uri.parse(customUriStr)
+                            val pickedDir = DocumentFile.fromTreeUri(context, treeUri)
+                            val newFile = pickedDir?.createFile(mimeType, fileName)
+                            
+                            if (newFile != null) {
+                                context.contentResolver.openOutputStream(newFile.uri)?.use { output ->
+                                    tempFile.inputStream().use { input ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("TransferWorker", "Failed to copy to SAF", e)
+                        } finally {
+                            tempFile.delete()
+                        }
+                    } else {
+                        // Default to Public Downloads
+                        try {
+                            saveToPublicDownloads(tempFile, fileName, mimeType)
+                        } catch (e: Exception) {
+                            Log.e("TransferWorker", "Failed to save to public downloads", e)
+                        } finally {
+                            tempFile.delete()
+                        }
                     }
                     
                     transferDao.updateProgress(transferId, 1f, TransferStatus.COMPLETED)
                     notificationHelper.notifyComplete(fileName, notificationId)
                     Result.success()
                 } else {
-                    if (destination.exists()) destination.delete()
+                    if (tempFile.exists()) tempFile.delete()
                     fail(transferId, "Download failed: ${result.exceptionOrNull()?.message}", notificationId)
                 }
             } else {
@@ -119,9 +166,39 @@ class TransferWorker @AssistedInject constructor(
                     fail(transferId, "Upload failed: ${result.exceptionOrNull()?.message}", notificationId)
                 }
             }
-        } catch (e: Exception) {
-            Log.e("TransferWorker", "Critical error in transfer $transferId", e)
-            fail(transferId, e.message, transferId.hashCode())
+        } catch (e: Throwable) {
+            Log.e("TransferWorker", "CRITICAL ERROR in transfer $transferId", e)
+            fail(transferId, "System Error: ${e.message}", transferId.hashCode())
+        }
+    }
+
+    private fun saveToPublicDownloads(source: File, name: String, mime: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, name)
+                put(MediaStore.Downloads.MIME_TYPE, mime)
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+            
+            val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            val uri = context.contentResolver.insert(collection, values)
+            
+            if (uri != null) {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    source.inputStream().use { input ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                values.clear()
+                values.put(MediaStore.Downloads.IS_PENDING, 0)
+                context.contentResolver.update(uri, values, null, null)
+            }
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!downloadsDir.exists()) downloadsDir.mkdirs()
+            val destFile = File(downloadsDir, name)
+            source.copyTo(destFile, overwrite = true)
         }
     }
 

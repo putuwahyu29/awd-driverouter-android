@@ -109,7 +109,7 @@ class CloudRepositoryImpl @Inject constructor(
                     val account = accountEntity.toDomain()
                     val provider = providers.find { it.providerId == account.provider }
                     try {
-                        withTimeoutOrNull(15000L) { // 15s timeout for quota
+                        withTimeoutOrNull(60000L) { // 60s timeout for quota
                             provider?.getQuota(account)?.onSuccess { quota ->
                                 accountDao.insertAccount(accountEntity.copy(
                                     usedSpace = quota.usedSpace,
@@ -152,7 +152,7 @@ class CloudRepositoryImpl @Inject constructor(
                         try {
                             var hasClearedCache = false
                             
-                            val files = withTimeoutOrNull(15000L) { // 15s timeout per account sync
+                            val files = withTimeoutOrNull(60000L) { // 60s timeout per account sync
                                 val fetchedResult = fetcher(provider, account) { partialFiles ->
                                     // Incremental Insertion - make it synchronous with the fetching process
                                     if (!hasClearedCache) {

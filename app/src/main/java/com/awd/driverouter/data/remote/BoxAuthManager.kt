@@ -44,14 +44,22 @@ class BoxAuthManager @Inject constructor(
     }
 
     private val prefs by lazy {
-        EncryptedSharedPreferences.create(
-            context,
-            PREF_FILE,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        try {
+            createEncryptedPrefs()
+        } catch (e: Exception) {
+            android.util.Log.e("BoxAuthManager", "Failed to initialize EncryptedSharedPreferences, clearing data", e)
+            context.deleteSharedPreferences(PREF_FILE)
+            createEncryptedPrefs()
+        }
     }
+
+    private fun createEncryptedPrefs() = EncryptedSharedPreferences.create(
+        context,
+        PREF_FILE,
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
 
     // Menyimpan kode otorisasi sementara sebelum ditukar dengan token
     private var pendingAuthCode: String? = null

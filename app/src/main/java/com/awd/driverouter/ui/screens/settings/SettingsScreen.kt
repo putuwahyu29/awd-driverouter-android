@@ -3,6 +3,8 @@ package com.awd.driverouter.ui.screens.settings
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -37,6 +39,7 @@ fun SettingsScreen(
     val theme by viewModel.theme.collectAsState()
     val language by viewModel.language.collectAsState()
     val appLockEnabled by viewModel.isAppLockEnabled.collectAsState()
+    val downloadLocationName by viewModel.downloadLocationName.collectAsState()
 
     val updateUiState by updateViewModel.uiState.collectAsState()
     val currentVersion = BuildConfig.VERSION_NAME
@@ -45,6 +48,19 @@ fun SettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
+
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            val folderName = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)?.name ?: uri.lastPathSegment
+            viewModel.setDownloadLocation(uri, folderName)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.message.collect { resId ->
@@ -90,6 +106,14 @@ fun SettingsScreen(
                 icon = Icons.Default.Language,
                 summary = if (language == AppLanguage.ENGLISH) stringResource(R.string.language_en) else stringResource(R.string.language_id)
             ) { showLanguageDialog = true }
+
+            SettingsItem(
+                title = stringResource(R.string.download_location),
+                icon = Icons.Default.FolderOpen,
+                summary = downloadLocationName ?: stringResource(R.string.default_download_location)
+            ) {
+                folderPickerLauncher.launch(null)
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
             SettingsSection(stringResource(R.string.security))

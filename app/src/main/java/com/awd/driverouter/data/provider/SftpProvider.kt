@@ -1,5 +1,6 @@
 package com.awd.driverouter.data.provider
 
+import android.webkit.MimeTypeMap
 import com.awd.driverouter.data.local.CredentialManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
@@ -53,11 +54,18 @@ class SftpProvider @Inject constructor(
             val entries = sftp.ls(path)
             val files = entries.map { entry ->
                 val isDir = entry.attributes.type == FileMode.Type.DIRECTORY
+                val extension = entry.name.substringAfterLast('.', "").lowercase()
+                val guessedMime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                
                 CloudFile(
                     id = entry.path,
                     name = entry.name,
                     size = if (isDir) null else entry.attributes.size,
-                    mimeType = if (isDir) "application/vnd.google-apps.folder" else "application/octet-stream",
+                    mimeType = when {
+                        isDir -> "application/vnd.google-apps.folder"
+                        guessedMime != null -> guessedMime
+                        else -> "application/octet-stream"
+                    },
                     provider = providerId,
                     accountId = account.id,
                     path = entry.path,
@@ -68,7 +76,7 @@ class SftpProvider @Inject constructor(
             onPartialResult?.invoke(files)
             Result.success(files)
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         Result.failure(e)
     }
 
@@ -88,7 +96,7 @@ class SftpProvider @Inject constructor(
             sftp.get(fileId, destination.absolutePath)
             Result.success(Unit)
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         Result.failure(e)
     }
 
@@ -120,7 +128,7 @@ class SftpProvider @Inject constructor(
                 modifiedTime = System.currentTimeMillis()
             ))
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         Result.failure(e)
     }
 
@@ -130,7 +138,7 @@ class SftpProvider @Inject constructor(
             if (attrs.type == FileMode.Type.DIRECTORY) sftp.rmdir(fileId) else sftp.rm(fileId)
             Result.success(Unit)
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         Result.failure(e)
     }
 
@@ -151,7 +159,7 @@ class SftpProvider @Inject constructor(
                 modifiedTime = System.currentTimeMillis()
             ))
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         Result.failure(e)
     }
 
@@ -171,7 +179,7 @@ class SftpProvider @Inject constructor(
                 modifiedTime = System.currentTimeMillis()
             ))
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         Result.failure(e)
     }
 

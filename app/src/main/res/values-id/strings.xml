@@ -223,6 +223,7 @@
     <string name="strategy_custom">Urutan Kustom</string>
     <string name="strategy_mirror">Mirror (Unggah ke SEMUA)</string>
     <string name="strategy_manual">Manual (Akun Utama)</string>
+    <string name="strategy_manual_hint">Anda dapat mengubah Akun Utama di menu Akun.</string>
 
     <string name="security">Keamanan</string>
     <string name="app_lock">Kunci Aplikasi</string>
@@ -272,6 +273,9 @@
     <string name="downloading_file">Mengunduh %1$s…</string>
     <string name="transfer_complete">Transfer selesai</string>
     <string name="transfer_failed">Transfer gagal</string>
+    <string name="download_location">Lokasi Unduhan</string>
+    <string name="default_download_location">Folder Unduhan Sistem</string>
+    <string name="image_preview_loading">Pratinjau Gambar (Mendownload…)</string>
     <string name="add_collaborator">Tambah kolaborator</string>
     <string name="permission_viewer">Pelihat</string>
     <string name="permission_editor">Editor</string>

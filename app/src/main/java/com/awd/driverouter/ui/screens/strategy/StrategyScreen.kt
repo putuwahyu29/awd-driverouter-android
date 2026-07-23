@@ -105,7 +105,7 @@ fun StrategyScreen(
                     }
                 }
 
-                if (strategy == AllocationStrategy.CUSTOM_ORDER || strategy == AllocationStrategy.MANUAL) {
+                if (strategy == AllocationStrategy.CUSTOM_ORDER) {
                     item {
                         Spacer(Modifier.height(24.dp))
                         Text(
@@ -132,6 +132,34 @@ fun StrategyScreen(
                                 viewModel.updateOrder(newList)
                             }
                         )
+                    }
+                } else if (strategy == AllocationStrategy.MANUAL) {
+                    val mainAccount = accounts.find { it.isMainAccount } ?: accounts.firstOrNull()
+                    
+                    item {
+                        Spacer(Modifier.height(24.dp))
+                        Text(
+                            text = stringResource(R.string.main_account_badge),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        
+                        if (mainAccount != null) {
+                            AccountOrderItem(
+                                account = mainAccount,
+                                isFirst = true,
+                                isLast = true,
+                                onMoveUp = {},
+                                onMoveDown = {}
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.strategy_manual_hint),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
                 }
             }

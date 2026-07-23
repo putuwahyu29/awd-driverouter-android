@@ -21,6 +21,8 @@ class SettingsViewModel @Inject constructor(
     val strategy: StateFlow<AllocationStrategy> = settingsManager.strategy
     val language: StateFlow<AppLanguage> = settingsManager.language
     
+    val downloadLocationName: StateFlow<String?> = settingsManager.downloadLocationName
+    
     val isAppLockEnabled: StateFlow<Boolean> = settingsManager.isAppLockEnabled
 
     private val _message = kotlinx.coroutines.flow.MutableSharedFlow<Int>()
@@ -43,5 +45,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _message.emit(if (enabled) com.awd.driverouter.R.string.app_lock_enabled else com.awd.driverouter.R.string.app_lock_disabled)
         }
+    }
+
+    fun setDownloadLocation(uri: android.net.Uri?, name: String?) {
+        settingsManager.setDownloadLocation(uri?.toString(), name)
     }
 }

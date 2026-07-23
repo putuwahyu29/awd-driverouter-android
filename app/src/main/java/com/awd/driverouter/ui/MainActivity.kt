@@ -51,9 +51,9 @@ class MainActivity : AppCompatActivity() {
     private var isUnlocked by mutableStateOf(false)
 
     private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        // Handle permission result if needed
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        // Handle results if needed
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -168,7 +168,7 @@ class MainActivity : AppCompatActivity() {
         
         handleDropboxRedirect(intent)
         handleBoxRedirect(intent)
-        checkNotificationPermission()
+        checkPermissions()
 
         setContent {
             val themeState by settingsManager.theme.collectAsState()
@@ -255,13 +255,24 @@ class MainActivity : AppCompatActivity() {
         biometricPrompt.authenticate(promptInfo)
     }
 
-    private fun checkNotificationPermission() {
+    private fun checkPermissions() {
+        val permissions = mutableListOf<String>()
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        val toRequest = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (toRequest.isNotEmpty()) {
+            requestPermissionLauncher.launch(toRequest.toTypedArray())
         }
     }
 }

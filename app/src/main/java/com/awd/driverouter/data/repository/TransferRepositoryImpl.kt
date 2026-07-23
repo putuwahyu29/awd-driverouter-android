@@ -69,6 +69,7 @@ class TransferRepositoryImpl @Inject constructor(
             "file_id" to file.id,
             "account_id" to file.accountId,
             "file_name" to file.name,
+            "mime_type" to file.mimeType,
             "provider" to file.provider,
             "expected_size" to (file.size ?: 0L),
             "type" to "DOWNLOAD"
@@ -95,8 +96,8 @@ class TransferRepositoryImpl @Inject constructor(
                         input.copyTo(output)
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("TransferRepo", "Failed to copy URI content", e)
+            } catch (e: Throwable) {
+                Log.e("TransferRepo", "CRITICAL: Failed to copy URI content (possible R8 issue)", e)
                 return@withContext
             }
 
@@ -136,11 +137,14 @@ class TransferRepositoryImpl @Inject constructor(
         val workRequest = OneTimeWorkRequestBuilder<TransferWorker>()
             .setInputData(data)
             .setConstraints(constraints)
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .addTag(transferId)
             .build()
 
-        workManager.enqueueUniqueWork(transferId, ExistingWorkPolicy.KEEP, workRequest)
+        workManager.enqueueUniqueWork(
+            transferId, 
+            ExistingWorkPolicy.REPLACE, // Using REPLACE to ensure fresh start if stuck
+            workRequest
+        )
     }
 
 
@@ -154,16 +158,26 @@ class TransferRepositoryImpl @Inject constructor(
     }
 
     private fun getFileName(uri: Uri): String? {
-        return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (cursor.moveToFirst()) cursor.getString(nameIndex) else null
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+            }
+        } catch (e: Throwable) {
+            Log.e("TransferRepo", "Failed to get filename from URI", e)
+            null
         }
     }
 
     private fun getFileSize(uri: Uri): Long {
-        return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            if (cursor.moveToFirst()) cursor.getLong(sizeIndex) else 0L
-        } ?: 0L
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (sizeIndex != -1 && cursor.moveToFirst()) cursor.getLong(sizeIndex) else 0L
+            } ?: 0L
+        } catch (e: Throwable) {
+            Log.e("TransferRepo", "Failed to get filesize from URI", e)
+            0L
+        }
     }
 }

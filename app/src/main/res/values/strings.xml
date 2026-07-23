@@ -254,6 +254,7 @@
     <string name="strategy_custom">Custom Order</string>
     <string name="strategy_mirror">Mirror (Upload to ALL)</string>
     <string name="strategy_manual">Manual (Main Account)</string>
+    <string name="strategy_manual_hint">You can change your Main Account in the Accounts menu.</string>
 
     <string name="security">Security</string>
     <string name="app_lock">App Lock</string>
@@ -304,4 +305,7 @@
     <string name="downloading_file">Downloading %1$s…</string>
     <string name="transfer_complete">Transfer complete</string>
     <string name="transfer_failed">Transfer failed</string>
+    <string name="download_location">Download Location</string>
+    <string name="default_download_location">System Downloads Folder</string>
+    <string name="image_preview_loading">Image Preview (Downloading…)</string>
 </resources>

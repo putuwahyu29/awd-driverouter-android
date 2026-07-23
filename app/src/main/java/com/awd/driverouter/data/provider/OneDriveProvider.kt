@@ -61,7 +61,7 @@ class OneDriveProvider @Inject constructor(
                 client.me().drive().items(folderId).children()
             }
             
-            val request = requestBuilder.buildRequest().expand("permissions")
+            val request = requestBuilder.buildRequest()
             val allFiles = mutableListOf<CloudFile>()
             var page = request.get()
             
@@ -71,11 +71,11 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
+                page = nextPageRequest?.buildRequest()?.get()
             }
             
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -87,7 +87,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().following().buildRequest().expand("permissions").get()
+            var page = client.me().drive().following().buildRequest().get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account) }
@@ -95,10 +95,10 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
+                page = nextPageRequest?.buildRequest()?.get()
             }
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -110,7 +110,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().recent().buildRequest().expand("permissions").get()
+            var page = client.me().drive().recent().buildRequest().get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account) }
@@ -118,10 +118,10 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
+                page = nextPageRequest?.buildRequest()?.get()
             }
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -133,7 +133,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().sharedWithMe().buildRequest().expand("permissions").get()
+            var page = client.me().drive().sharedWithMe().buildRequest().get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account) }
@@ -141,10 +141,10 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
+                page = nextPageRequest?.buildRequest()?.get()
             }
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -156,7 +156,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().special("trash").children().buildRequest().expand("permissions").get()
+            var page = client.me().drive().special("trash").children().buildRequest().get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account).copy(isTrashed = true) }
@@ -164,10 +164,10 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
+                page = nextPageRequest?.buildRequest()?.get()
             }
             Result.success(allFiles)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -227,7 +227,7 @@ class OneDriveProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -250,7 +250,7 @@ class OneDriveProvider @Inject constructor(
             }
             onProgress?.invoke(1.0f)
             Result.success(item!!.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -260,7 +260,7 @@ class OneDriveProvider @Inject constructor(
         return try {
             client.me().drive().items(fileId).buildRequest().delete()
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -272,7 +272,7 @@ class OneDriveProvider @Inject constructor(
             item.name = newName
             val updated = client.me().drive().items(fileId).buildRequest().patch(item)
             Result.success(updated!!.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -287,7 +287,7 @@ class OneDriveProvider @Inject constructor(
             else client.me().drive().items(parentId).children().buildRequest()
             val created = request.post(folderItem)
             Result.success(created!!.toCloudFile(account))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -298,7 +298,7 @@ class OneDriveProvider @Inject constructor(
             val drive = client.me().drive().buildRequest().get()
             val quota = drive?.quota
             Result.success(QuotaInfo(usedSpace = quota?.used ?: 0L, totalSpace = quota?.total ?: 0L))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -321,7 +321,7 @@ class OneDriveProvider @Inject constructor(
 
             client.me().drive().items(fileId).invite(params).buildRequest().post()
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -344,7 +344,7 @@ class OneDriveProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -368,7 +368,7 @@ class OneDriveProvider @Inject constructor(
                 )
             } ?: emptyList()
             Result.success(domainPermissions)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
@@ -382,7 +382,7 @@ class OneDriveProvider @Inject constructor(
                 .build()
             val link = client.me().drive().items(fileId).createLink(params).buildRequest().post()
             Result.success(link?.link?.webUrl ?: "")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Result.failure(e)
         }
     }
