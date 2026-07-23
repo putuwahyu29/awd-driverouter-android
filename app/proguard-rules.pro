@@ -6,9 +6,34 @@
 -keepattributes Signature
 -keepattributes InnerClasses,EnclosingMethod
 
-# Hilt
--keep,allowobfuscation,allowshrinking @dagger.hilt.EntryPoint class *
--keep,allowobfuscation,allowshrinking @dagger.hilt.InstallIn class *
+# Box SDK
+-keep class com.box.sdk.** { *; }
+-dontwarn com.box.sdk.**
+-keep class com.eclipsesource.json.** { *; }
+-dontwarn com.eclipsesource.json.**
+
+# Microsoft Authentication Library (MSAL) & Graph
+-keep class com.microsoft.identity.client.** { *; }
+-dontwarn com.microsoft.identity.client.**
+-keep class com.microsoft.graph.** { *; }
+-dontwarn com.microsoft.graph.**
+-dontwarn com.microsoft.device.display.DisplayMask
+
+# Dropbox SDK
+-keep class com.dropbox.core.** { *; }
+-dontwarn com.dropbox.core.**
+
+# Google Drive / API Client
+-keep class com.google.api.client.** { *; }
+-dontwarn com.google.api.client.**
+-keep class com.google.api.services.drive.** { *; }
+-dontwarn com.google.api.services.drive.**
+-keep class com.google.android.gms.auth.api.signin.** { *; }
+-dontwarn com.google.auto.value.AutoValue
+
+# Model Data (Retrofit/Gson mapping)
+-keep class com.awd.driverouter.data.remote.** { *; }
+-keep class com.awd.driverouter.domain.model.** { *; }
 
 # Retrofit
 -keepattributes Signature, InnerClasses, EnclosingMethod
@@ -32,25 +57,10 @@
 
 # Gson
 -keep class com.google.gson.** { *; }
--keepattributes Signature
--keepattributes *Annotation*
 
 # Coil
 -keep class coil.** { *; }
 -dontwarn coil.**
-
-# Microsoft Graph / MSAL
--keep class com.microsoft.identity.client.** { *; }
--dontwarn com.microsoft.identity.client.**
--keep class com.microsoft.graph.** { *; }
--dontwarn com.microsoft.graph.**
--dontwarn com.microsoft.device.display.DisplayMask
-
-# Google Drive / API Client
--keep class com.google.api.client.** { *; }
--dontwarn com.google.api.client.**
--keep class com.google.api.services.drive.** { *; }
--dontwarn com.google.auto.value.AutoValue
 
 # XmlPull Conflict Fix
 -dontwarn org.xmlpull.v1.**
@@ -75,3 +85,7 @@
    <fields>;
    <methods>;
 }
+
+# Hilt
+-keep,allowobfuscation,allowshrinking @dagger.hilt.EntryPoint class *
+-keep,allowobfuscation,allowshrinking @dagger.hilt.InstallIn class *

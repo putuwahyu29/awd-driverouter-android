@@ -71,6 +71,7 @@ fun MainScreen(
     
     val networkObserver = remember { NetworkObserver(context) }
     val networkStatus by networkObserver.observe.collectAsState(initial = NetworkObserver.Status.Available)
+    val isOnline = networkStatus == NetworkObserver.Status.Available
 
     LaunchedEffect(Unit) {
         accountsViewModel.syncAllQuotas()
@@ -108,30 +109,13 @@ fun MainScreen(
         drawerContent = {
             MainDrawerContent(
                 navController = navController,
+                accountsViewModel = accountsViewModel,
                 onCloseDrawer = { scope.launch { drawerState.close() } }
             )
         },
         gesturesEnabled = showBottomBar
     ) {
         Scaffold(
-            topBar = {
-                if (networkStatus != NetworkObserver.Status.Available) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.offline_message), style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-            },
             bottomBar = {
                 if (showBottomBar) {
                     NavigationBar(
@@ -167,54 +151,82 @@ fun MainScreen(
                 }
             }
         ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Home.route,
-                modifier = Modifier.padding(innerPadding),
-                enterTransition = { fadeIn(animationSpec = tween(300)) + slideInVertically(initialOffsetY = { 30 }) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = innerPadding.calculateBottomPadding())
+                    .statusBarsPadding()
             ) {
-                composable(Screen.Home.route) { 
-                    FileBrowserScreen(
-                        mode = "files",
-                        onMenuClick = { scope.launch { drawerState.open() } }
-                    ) 
+                if (networkStatus != NetworkObserver.Status.Available) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.offline_message), style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
-                composable(Screen.Starred.route) { 
-                    FileBrowserScreen(
-                        mode = "starred",
-                        onMenuClick = { scope.launch { drawerState.open() } }
-                    ) 
-                }
-                composable(Screen.Shared.route) { 
-                    FileBrowserScreen(
-                        mode = "shared",
-                        onMenuClick = { scope.launch { drawerState.open() } }
-                    ) 
-                }
-                composable(Screen.Trash.route) {
-                    FileBrowserScreen(
-                        mode = "trash",
-                        onMenuClick = { scope.launch { drawerState.open() } }
-                    )
-                }
-                composable(Screen.Transfers.route) { 
-                    TransfersScreen(onBack = { navController.popBackStack() }) 
-                }
-                composable(Screen.Strategy.route) {
-                    StrategyScreen(onBack = { navController.popBackStack() })
-                }
-                composable(Screen.Backup.route) {
-                    BackupScreen(onBack = { navController.popBackStack() })
-                }
-                composable(Screen.Accounts.route) { 
-                    AccountsScreen(onBack = { navController.popBackStack() }) 
-                }
-                composable(Screen.Settings.route) { 
-                    SettingsScreen(onBack = { navController.popBackStack() }) 
-                }
-                composable(Screen.About.route) {
-                    AboutScreen(onBack = { navController.popBackStack() })
+
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Home.route,
+                    modifier = Modifier.weight(1f),
+                    enterTransition = { fadeIn(animationSpec = tween(300)) + slideInVertically(initialOffsetY = { 30 }) },
+                    exitTransition = { fadeOut(animationSpec = tween(300)) }
+                ) {
+                    composable(Screen.Home.route) { 
+                        FileBrowserScreen(
+                            mode = "files",
+                            isOnline = isOnline,
+                            onMenuClick = { scope.launch { drawerState.open() } }
+                        ) 
+                    }
+                    composable(Screen.Starred.route) { 
+                        FileBrowserScreen(
+                            mode = "starred",
+                            isOnline = isOnline,
+                            onMenuClick = { scope.launch { drawerState.open() } }
+                        ) 
+                    }
+                    composable(Screen.Shared.route) { 
+                        FileBrowserScreen(
+                            mode = "shared",
+                            isOnline = isOnline,
+                            onMenuClick = { scope.launch { drawerState.open() } }
+                        ) 
+                    }
+                    composable(Screen.Trash.route) {
+                        FileBrowserScreen(
+                            mode = "trash",
+                            isOnline = isOnline,
+                            onMenuClick = { scope.launch { drawerState.open() } }
+                        )
+                    }
+                    composable(Screen.Transfers.route) { 
+                        TransfersScreen(onBack = { navController.popBackStack() }) 
+                    }
+                    composable(Screen.Strategy.route) {
+                        StrategyScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable(Screen.Backup.route) {
+                        BackupScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable(Screen.Accounts.route) { 
+                        AccountsScreen(onBack = { navController.popBackStack() }) 
+                    }
+                    composable(Screen.Settings.route) { 
+                        SettingsScreen(onBack = { navController.popBackStack() }) 
+                    }
+                    composable(Screen.About.route) {
+                        AboutScreen(onBack = { navController.popBackStack() })
+                    }
                 }
             }
         }
@@ -224,8 +236,8 @@ fun MainScreen(
 @Composable
 fun MainDrawerContent(
     navController: androidx.navigation.NavController,
-    onCloseDrawer: () -> Unit,
-    accountsViewModel: AccountsViewModel = hiltViewModel()
+    accountsViewModel: AccountsViewModel,
+    onCloseDrawer: () -> Unit
 ) {
     val totalSpace by accountsViewModel.totalSpace.collectAsState()
     val usedSpace by accountsViewModel.usedSpace.collectAsState()
@@ -234,7 +246,10 @@ fun MainDrawerContent(
     val accounts by accountsViewModel.accounts.collectAsState()
     val hasAccounts = accounts.isNotEmpty()
     
-    ModalDrawerSheet {
+    ModalDrawerSheet(
+        modifier = Modifier.fillMaxHeight(),
+        windowInsets = WindowInsets.statusBars
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header with Storage Summary
             Box(

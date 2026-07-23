@@ -14,6 +14,21 @@ interface CloudFileDao {
     fun searchFilesWithAccount(query: String): Flow<List<CloudFileWithAccount>>
 
     @Transaction
+    @Query("""
+        WITH RECURSIVE subfolders AS (
+            SELECT id FROM cloud_files WHERE id = :folderId
+            UNION ALL
+            SELECT cf.id FROM cloud_files cf
+            JOIN subfolders sf ON cf.parentId = sf.id
+        )
+        SELECT * FROM cloud_files 
+        WHERE name LIKE '%' || :query || '%' 
+        AND isTrashed = 0 
+        AND parentId IN subfolders
+    """)
+    fun searchFilesWithAccountInFolder(query: String, folderId: String): Flow<List<CloudFileWithAccount>>
+
+    @Transaction
     @Query("SELECT * FROM cloud_files WHERE isStarred = 1 AND isTrashed = 0 ORDER BY modifiedTime DESC")
     fun getStarredFilesWithAccount(): Flow<List<CloudFileWithAccount>>
 

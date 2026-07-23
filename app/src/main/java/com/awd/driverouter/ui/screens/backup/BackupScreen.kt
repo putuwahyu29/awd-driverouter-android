@@ -67,7 +67,8 @@ fun BackupScreen(
                     }) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_account))
                     }
-                }
+                },
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
         },
         floatingActionButton = {

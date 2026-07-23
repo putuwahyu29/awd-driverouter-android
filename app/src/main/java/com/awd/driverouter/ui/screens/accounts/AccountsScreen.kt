@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.awd.driverouter.R
 import com.awd.driverouter.data.local.CredentialManager
 import com.awd.driverouter.domain.model.CloudAccount
+import com.awd.driverouter.ui.components.BrandIcon
 import com.awd.driverouter.util.formatSize
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
@@ -63,7 +63,6 @@ fun AccountsScreen(
     val context = LocalContext.current
 
     var selectedProviderForConfig by remember { mutableStateOf<String?>(null) }
-    val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
     
     var accountToRemove by remember { mutableStateOf<CloudAccount?>(null) }
@@ -102,13 +101,7 @@ fun AccountsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
-                actions = {
-                    IconButton(onClick = { 
-                        Toast.makeText(context, context.getString(R.string.setup_guide), Toast.LENGTH_SHORT).show()
-                    }) {
-                        Icon(Icons.Default.HelpCenter, contentDescription = stringResource(R.string.help))
-                    }
-                }
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
         }
     ) { innerPadding ->
@@ -138,7 +131,7 @@ fun AccountsScreen(
 
                 ProviderSection(
                     providerId = "onedrive",
-                    name = stringResource(R.string.onedrive),
+                    name = "OneDrive",
                     accounts = accounts.filter { it.provider == "onedrive" },
                     isEnabled = providerValidation["onedrive"] ?: false,
                     onAddClick = { context.findActivity()?.let { viewModel.oneDriveSignIn(it) } },
@@ -225,12 +218,45 @@ fun AccountsScreen(
     }
 
     if (showSheet && selectedProviderForConfig != null) {
-        ModalBottomSheet(
-            onDismissRequest = { showSheet = false }, 
-            sheetState = sheetState,
-            windowInsets = WindowInsets.ime
+        val provider = selectedProviderForConfig!!
+        Dialog(
+            onDismissRequest = { showSheet = false },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
         ) {
-            ConfigSheetContent(selectedProviderForConfig!!, { showSheet = false }, viewModel)
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    TopAppBar(
+                        title = { 
+                            val providerName = when (provider) {
+                                "google" -> stringResource(R.string.google_drive)
+                                "onedrive" -> "OneDrive"
+                                "dropbox" -> stringResource(R.string.dropbox)
+                                "box" -> stringResource(R.string.box)
+                                "webdav" -> stringResource(R.string.webdav)
+                                "sftp" -> stringResource(R.string.sftp)
+                                else -> provider.replaceFirstChar { it.uppercase() }
+                            }
+                            Text(stringResource(R.string.configure_provider, providerName)) 
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { showSheet = false }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                            }
+                        },
+                        windowInsets = WindowInsets.statusBars
+                    )
+                    
+                    Box(modifier = Modifier.weight(1f)) {
+                        ConfigSheetContent(provider, { showSheet = false }, viewModel)
+                    }
+                }
+            }
         }
     }
 }
@@ -314,6 +340,9 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
     var displayName by remember { mutableStateOf("") }
     
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
+    // ... (labels and keys logic remains same)
 
     val label1 = when (provider) { 
         "google" -> stringResource(R.string.client_id_web_label)
@@ -368,21 +397,13 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
         if (key4.isNotEmpty()) field4 = viewModel.getCredential(key4)
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(24.dp).imePadding().verticalScroll(rememberScrollState())) {
-        val providerName = when (provider) {
-            "google" -> stringResource(R.string.google_drive)
-            "onedrive" -> stringResource(R.string.onedrive)
-            "dropbox" -> stringResource(R.string.dropbox)
-            "box" -> stringResource(R.string.box)
-            "webdav" -> stringResource(R.string.webdav)
-            "sftp" -> stringResource(R.string.sftp)
-            else -> provider.replaceFirstChar { it.uppercase() }
-        }
-        
-        val title = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account_title, providerName) else stringResource(R.string.configure_provider, providerName)
-        Text(text = title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 24.dp)
+            .padding(top = 24.dp, bottom = 24.dp)
+    ) {
         if (provider == "google" || provider == "onedrive") {
             AppIdentitySection(
                 packageName = viewModel.getPackageName(), 
@@ -494,11 +515,18 @@ fun ConfigSheetContent(provider: String, onDismiss: () -> Unit, viewModel: Accou
             val buttonText = if (provider == "webdav" || provider == "sftp") stringResource(R.string.connect_account) else stringResource(R.string.save_config)
             Text(buttonText) 
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { 
-            Text(stringResource(R.string.cancel)) 
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.cancel))
         }
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.ime))
     }
 }
 
@@ -555,20 +583,14 @@ fun ProviderSection(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(if (accounts.isEmpty()) stringResource(R.string.add_account) else stringResource(R.string.add_another))
             }
-            if (!isEnabled) {
-                Text(
-                    text = stringResource(R.string.setup_guide), 
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 4.dp).align(Alignment.CenterHorizontally)
-                )
-            }
         }
     }
 }
 
 @Composable
 fun AccountStorageItem(account: CloudAccount, onRemove: (CloudAccount) -> Unit, onSetMain: () -> Unit) {
+    var isEmailVisible by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -602,11 +624,48 @@ fun AccountStorageItem(account: CloudAccount, onRemove: (CloudAccount) -> Unit, 
                             }
                         }
                     }
-                    Text(
-                        text = account.email ?: "", 
-                        style = MaterialTheme.typography.bodySmall, 
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val email = account.email ?: ""
+                        val displayEmail = if (isEmailVisible || email.isEmpty()) {
+                            email
+                        } else {
+                            // Mask email: k***@domain.com
+                            val parts = email.split("@")
+                            if (parts.size == 2) {
+                                val name = parts[0]
+                                val domain = parts[1]
+                                if (name.length > 1) {
+                                    "${name[0]}***@$domain"
+                                } else {
+                                    "***@$domain"
+                                }
+                            } else {
+                                "********"
+                            }
+                        }
+
+                        Text(
+                            text = displayEmail, 
+                            style = MaterialTheme.typography.bodySmall, 
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        
+                        if (email.isNotEmpty()) {
+                            IconButton(
+                                onClick = { isEmailVisible = !isEmailVisible },
+                                modifier = Modifier.size(24.dp).padding(start = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isEmailVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
                 }
                 
                 if (!account.isMainAccount) {
@@ -665,46 +724,6 @@ fun AccountStorageItem(account: CloudAccount, onRemove: (CloudAccount) -> Unit, 
     }
 }
 
-
-@Composable
-fun BrandIcon(providerId: String, size: androidx.compose.ui.unit.Dp) {
-    val logoRes = when (providerId) {
-        "google" -> R.drawable.ic_google_drive
-        "onedrive" -> R.drawable.ic_onedrive
-        "dropbox" -> R.drawable.ic_dropbox
-        "box" -> R.drawable.ic_box
-        else -> null
-    }
-    
-    val color = when (providerId) {
-        "google" -> Color(0xFF4285F4)
-        "onedrive" -> Color(0xFF0078D4)
-        "dropbox" -> Color(0xFF0061FF)
-        "box" -> Color(0xFF0061D5)
-        "mega" -> Color(0xFFD92121)
-        else -> MaterialTheme.colorScheme.primary
-    }
-    
-    Surface(shape = CircleShape, color = color.copy(alpha = 0.1f), modifier = Modifier.size(size)) {
-        Box(contentAlignment = Alignment.Center) {
-            if (logoRes != null) {
-                Icon(
-                    painter = painterResource(id = logoRes),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(size * 0.6f)
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Cloud,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(size * 0.6f)
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun ConfigGuideSection(provider: String) {

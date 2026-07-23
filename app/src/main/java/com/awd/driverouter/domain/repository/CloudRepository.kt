@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface CloudRepository {
     fun getAllFiles(folderId: String? = null): Flow<List<CloudFile>>
     
-    fun searchFiles(query: String): Flow<List<CloudFile>>
+    fun searchFiles(query: String, folderId: String? = null): Flow<List<CloudFile>>
 
     fun getStarredFiles(): Flow<List<CloudFile>>
     

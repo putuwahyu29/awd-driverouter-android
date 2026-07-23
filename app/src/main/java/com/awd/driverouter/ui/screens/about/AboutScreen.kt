@@ -45,7 +45,8 @@ fun AboutScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
-                }
+                },
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
         }
     ) { innerPadding ->

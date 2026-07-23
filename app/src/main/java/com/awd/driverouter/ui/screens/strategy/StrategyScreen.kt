@@ -18,7 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.awd.driverouter.R
 import com.awd.driverouter.data.local.AllocationStrategy
 import com.awd.driverouter.domain.model.CloudAccount
-import com.awd.driverouter.ui.screens.accounts.BrandIcon
+import com.awd.driverouter.ui.components.BrandIcon
 import java.util.Collections
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,7 +38,8 @@ fun StrategyScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
-                }
+                },
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
         }
     ) { innerPadding ->

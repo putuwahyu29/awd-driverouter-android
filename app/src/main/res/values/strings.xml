@@ -113,10 +113,14 @@
     <string name="menu">Menu</string>
     <string name="sync">Sync</string>
     <string name="clear_search">Clear Search</string>
+    <string name="search_this_folder">This Folder</string>
+    <string name="search_all">All</string>
+    <string name="filter_all_accounts">All Accounts</string>
     <string name="view_list">View List</string>
     <string name="view_grid">View Grid</string>
     <string name="info">Info</string>
     <string name="pdf_preview_loading">PDF Preview (Downloading…)</string>
+    <string name="download_to_preview">Download to Preview</string>
     <string name="error_pdf">Error loading PDF: %1$s</string>
     <string name="pdf_page">Page %1$d</string>
     <string name="settings">Settings</string>
@@ -139,7 +143,7 @@
     <string name="redirect_uri_msauth_label">Redirect URI (msauth://...)</string>
 
     <string name="google_guide">1. Open Google Cloud Console.\n2. Enable Drive API.\n3. Create OAuth 2.0 Client ID (Web Application).\n4. Copy \'Client ID\' to the field below.</string>
-    <string name="onedrive_guide">1. Open Azure Portal -> App Registrations.\n2. Copy \'Application (client) ID\'.\n3. In \'Authentication\', add Android platform with Package &amp; MSAL Signature Hash above.</string>
+    <string name="onedrive_guide">1. Open Microsoft Entra admin center (formerly Azure Portal).\n2. Copy \'Application (client) ID\'.\n3. In \'Authentication\', add Android platform with Package &amp; SHA-1 (Base 64) above.</string>
     <string name="dropbox_guide">1. Open Dropbox App Console.\n2. Create new App (Scoped access).\n3. Grant \'files.content.read/write\' permissions.\n4. Copy \'App Key\' below.</string>
     <string name="box_guide">1. Open Box Developer Console.\n2. Create Custom App (OAuth 2.0).\n3. Copy \'Client ID\' and \'Client Secret\' below.\n4. Add Redirect URI: \'awd-driverouter://box-auth\'.</string>
     <string name="webdav_guide">1. Enter full WebDAV server URL.\n2. Enter Username and Password.\n3. Example Nextcloud: \'https://domain.com/remote.php/dav/files/user/\'</string>

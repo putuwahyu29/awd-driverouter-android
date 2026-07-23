@@ -53,7 +53,8 @@ fun TransfersScreen(
                     IconButton(onClick = { showClearConfirm = true }) {
                         Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.clear_history))
                     }
-                }
+                },
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
         }
     ) { innerPadding ->

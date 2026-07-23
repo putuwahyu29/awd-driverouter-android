@@ -32,8 +32,13 @@ class CloudRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun searchFiles(query: String): Flow<List<CloudFile>> {
-        return dao.searchFilesWithAccount(query).map { entities ->
+    override fun searchFiles(query: String, folderId: String?): Flow<List<CloudFile>> {
+        val flow = if (folderId == null) {
+            dao.searchFilesWithAccount(query)
+        } else {
+            dao.searchFilesWithAccountInFolder(query, folderId)
+        }
+        return flow.map { entities ->
             entities.map { it.toDomain() }
         }
     }

@@ -31,17 +31,27 @@ class BoxAuthManager @Inject constructor(
         private const val BOX_AUTH_URL = "https://account.box.com/api/oauth2/authorize"
     }
 
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val masterKey by lazy {
+        try {
+            MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+        } catch (e: Exception) {
+            android.util.Log.e("BoxAuthManager", "Gagal inisialisasi MasterKey: ${e.message}")
+            // Fallback strategy if needed, but usually just logging is enough before prefs creation
+            MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        }
+    }
 
-    private val prefs = EncryptedSharedPreferences.create(
-        context,
-        PREF_FILE,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs by lazy {
+        EncryptedSharedPreferences.create(
+            context,
+            PREF_FILE,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
 
     // Menyimpan kode otorisasi sementara sebelum ditukar dengan token
     private var pendingAuthCode: String? = null
@@ -158,10 +168,17 @@ class BoxAuthManager @Inject constructor(
      * @param api BoxAPIConnection yang sudah berisi access token valid
      */
     fun finalizeAuth(accountId: String, api: BoxAPIConnection) {
-        prefs.edit()
-            .putString("${KEY_ACCESS_TOKEN}_$accountId", api.accessToken)
-            .putString("${KEY_REFRESH_TOKEN}_$accountId", api.refreshToken)
-            .apply()
+        val editor = prefs.edit()
+        
+        api.accessToken?.let { 
+            editor.putString("${KEY_ACCESS_TOKEN}_$accountId", it)
+        }
+        
+        api.refreshToken?.let { 
+            editor.putString("${KEY_REFRESH_TOKEN}_$accountId", it)
+        }
+        
+        editor.apply()
         pendingAuthCode = null
     }
 

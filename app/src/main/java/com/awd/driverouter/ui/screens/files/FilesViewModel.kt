@@ -10,12 +10,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 data class FolderInfo(val id: String?, val name: String, val cloudFile: CloudFile? = null)
 
 enum class FileCategory { ALL, IMAGE, VIDEO, DOCUMENT, AUDIO }
 enum class SortOrder { NAME, DATE, SIZE }
+enum class SearchScope { ALL, CURRENT_FOLDER }
 
 @HiltViewModel
 class FilesViewModel @Inject constructor(
@@ -31,20 +33,37 @@ class FilesViewModel @Inject constructor(
     private val _sortOrder = MutableStateFlow(SortOrder.NAME)
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
 
-    val uiState: StateFlow<FilesUiState> = combine(_rawFilesState, _categoryFilter, _sortOrder) { state, category, sort ->
+    private val _selectedAccountId = MutableStateFlow<String?>(null)
+    val selectedAccountId: StateFlow<String?> = _selectedAccountId.asStateFlow()
+
+    val uiState: StateFlow<FilesUiState> = combine(
+        _rawFilesState, 
+        _categoryFilter, 
+        _sortOrder,
+        _selectedAccountId
+    ) { state, category, sort, selectedAccId ->
         if (state is FilesUiState.Success) {
-            var filtered = when (category) {
-                FileCategory.ALL -> state.files
-                FileCategory.IMAGE -> state.files.filter { it.mimeType.startsWith("image/") }
-                FileCategory.VIDEO -> state.files.filter { it.mimeType.startsWith("video/") }
-                FileCategory.AUDIO -> state.files.filter { it.mimeType.startsWith("audio/") }
-                FileCategory.DOCUMENT -> state.files.filter { 
+            var filtered = state.files
+
+            // Filter by Account
+            if (selectedAccId != null) {
+                filtered = filtered.filter { it.accountId == selectedAccId }
+            }
+
+            // Filter by Category
+            filtered = when (category) {
+                FileCategory.ALL -> filtered
+                FileCategory.IMAGE -> filtered.filter { it.mimeType.startsWith("image/") }
+                FileCategory.VIDEO -> filtered.filter { it.mimeType.startsWith("video/") }
+                FileCategory.AUDIO -> filtered.filter { it.mimeType.startsWith("audio/") }
+                FileCategory.DOCUMENT -> filtered.filter { 
                     val mime = it.mimeType.lowercase()
                     mime.contains("pdf") || mime.contains("word") || mime.contains("spreadsheet") || 
                     mime.contains("presentation") || mime.contains("text/") || mime.endsWith(".doc") || mime.endsWith(".docx")
                 }
             }
 
+            // Apply Sorting
             filtered = when (sort) {
                 SortOrder.NAME -> filtered.sortedBy { it.name.lowercase() }
                 SortOrder.DATE -> filtered.sortedByDescending { it.modifiedTime ?: 0L }
@@ -72,6 +91,9 @@ class FilesViewModel @Inject constructor(
     private val _selectedFileIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedFileIds: StateFlow<Set<String>> = _selectedFileIds.asStateFlow()
 
+    private val _searchScope = MutableStateFlow(SearchScope.ALL)
+    val searchScope: StateFlow<SearchScope> = _searchScope.asStateFlow()
+
     private val _errorEvent = MutableSharedFlow<String>()
     val errorEvent: SharedFlow<String> = _errorEvent.asSharedFlow()
 
@@ -84,10 +106,25 @@ class FilesViewModel @Inject constructor(
         loadFiles(null, context.getString(R.string.nav_home))
     }
 
+    fun selectAccount(accountId: String?) {
+        _selectedAccountId.value = accountId
+    }
 
     fun setMode(mode: String) {
         if (currentMode == mode && mode != "files") return
         currentMode = mode
+        
+        _selectedAccountId.value = null // Reset filter when mode changes
+        
+        // Reset breadcrumbs based on mode
+        val rootTitle = when (mode) {
+            "starred" -> context.getString(R.string.nav_starred)
+            "shared" -> context.getString(R.string.nav_shared)
+            "trash" -> context.getString(R.string.nav_trash)
+            else -> context.getString(R.string.nav_home)
+        }
+        _folderPath.value = listOf(FolderInfo(null, rootTitle))
+        
         if (mode == "files") {
             loadFiles(null, context.getString(R.string.nav_home))
         } else {
@@ -182,10 +219,12 @@ class FilesViewModel @Inject constructor(
     }
 
     fun onSearchQueryChange(query: String) {
+        val wasEmpty = _searchQuery.value.isEmpty()
         _searchQuery.value = query
         loadJob?.cancel() // Always cancel previous job when query changes
         
         if (query.isEmpty()) {
+            _searchScope.value = SearchScope.ALL // Reset scope when clearing search
             if (currentMode == "files") {
                 val lastFolder = _folderPath.value.last()
                 // Reload current folder without resetting the path
@@ -210,19 +249,37 @@ class FilesViewModel @Inject constructor(
                 }
             }
         } else {
+            // If just started searching and in a subfolder, default to current folder scope
+            if (wasEmpty && _folderPath.value.size > 1) {
+                _searchScope.value = SearchScope.CURRENT_FOLDER
+            }
+
             _rawFilesState.value = FilesUiState.Loading
             loadJob = viewModelScope.launch {
                 // Add a small delay for debouncing search
                 kotlinx.coroutines.delay(300)
-                repository.searchFiles(query).collect { files ->
+                
+                val folderId = if (_searchScope.value == SearchScope.CURRENT_FOLDER) {
+                    _folderPath.value.lastOrNull()?.id
+                } else null
+                
+                repository.searchFiles(query, folderId).collect { files ->
                     _rawFilesState.value = FilesUiState.Success(files)
                 }
             }
         }
     }
 
+    fun setSearchScope(scope: SearchScope) {
+        _searchScope.value = scope
+        if (_searchQuery.value.isNotEmpty()) {
+            onSearchQueryChange(_searchQuery.value)
+        }
+    }
+
     fun navigateToFolder(folder: CloudFile) {
         if (folder.isFolder) {
+            currentMode = "files" // Switch to files mode for subfolders
             val newPath = _folderPath.value.toMutableList().apply {
                 add(FolderInfo(folder.id, folder.name, folder))
             }
@@ -251,6 +308,12 @@ class FilesViewModel @Inject constructor(
 
     fun downloadFile(file: CloudFile) {
         viewModelScope.launch { repository.downloadFile(file) }
+    }
+
+    fun getLocalFile(file: CloudFile): File? {
+        val downloadsDir = File(context.getExternalFilesDir(null), "Downloads")
+        val localFile = File(downloadsDir, file.name)
+        return if (localFile.exists()) localFile else null
     }
 
     fun deleteFile(file: CloudFile) {

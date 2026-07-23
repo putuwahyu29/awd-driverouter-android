@@ -77,6 +77,7 @@ class TransferWorker @AssistedInject constructor(
             
             if (type == "DOWNLOAD") {
                 if (fileId == null) return fail(transferId, "Missing file ID for download")
+                val expectedSize = inputData.getLong("expected_size", 0L)
                 val downloadsDir = File(context.getExternalFilesDir(null), "Downloads")
                 if (!downloadsDir.exists()) downloadsDir.mkdirs()
                 
@@ -85,10 +86,18 @@ class TransferWorker @AssistedInject constructor(
                 val result = provider.downloadFile(account, fileId, destination, progressCallback)
                 
                 if (result.isSuccess) {
+                    // Integrity Check: Verify file size
+                    val actualSize = destination.length()
+                    if (expectedSize > 0 && actualSize != expectedSize) {
+                        destination.delete() // Clean up corrupted file
+                        return fail(transferId, "Integrity check failed: expected $expectedSize, got $actualSize", notificationId)
+                    }
+                    
                     transferDao.updateProgress(transferId, 1f, TransferStatus.COMPLETED)
                     notificationHelper.notifyComplete(fileName, notificationId)
                     Result.success()
                 } else {
+                    if (destination.exists()) destination.delete()
                     fail(transferId, "Download failed: ${result.exceptionOrNull()?.message}", notificationId)
                 }
             } else {

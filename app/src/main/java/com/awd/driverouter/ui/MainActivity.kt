@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.biometric.BiometricManager
@@ -145,11 +146,15 @@ class MainActivity : AppCompatActivity() {
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
                     }
-                } catch (e: Exception) {
-                    android.util.Log.e("MainActivity", "Box auth error: ${e.message}", e)
+                } catch (e: Throwable) {
+                    android.util.Log.e("MainActivity", "Box auth crash/error: ${e.message}", e)
+                    val errorMsg = when (e) {
+                        is NoClassDefFoundError, is NoSuchMethodError -> "ProGuard/R8 Error: ${e.javaClass.simpleName}"
+                        else -> e.message ?: "Unknown error"
+                    }
                     android.widget.Toast.makeText(
                         this@MainActivity,
-                        getString(R.string.login_failed, e.message ?: ""),
+                        getString(R.string.login_failed, errorMsg),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -158,6 +163,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         
         handleDropboxRedirect(intent)

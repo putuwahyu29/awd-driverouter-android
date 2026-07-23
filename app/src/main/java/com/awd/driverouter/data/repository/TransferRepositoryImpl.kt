@@ -66,6 +66,7 @@ class TransferRepositoryImpl @Inject constructor(
             "account_id" to file.accountId,
             "file_name" to file.name,
             "provider" to file.provider,
+            "expected_size" to (file.size ?: 0L),
             "type" to "DOWNLOAD"
         )
 
@@ -131,6 +132,7 @@ class TransferRepositoryImpl @Inject constructor(
         val workRequest = OneTimeWorkRequestBuilder<TransferWorker>()
             .setInputData(data)
             .setConstraints(constraints)
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .addTag(transferId)
             .build()
 

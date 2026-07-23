@@ -107,10 +107,14 @@
     <string name="menu">Menu</string>
     <string name="sync">Sinkronisasi</string>
     <string name="clear_search">Hapus Pencarian</string>
+    <string name="search_this_folder">Folder Ini</string>
+    <string name="search_all">Semua</string>
+    <string name="filter_all_accounts">Semua Akun</string>
     <string name="view_list">Tampilan Daftar</string>
     <string name="view_grid">Tampilan Grid</string>
     <string name="info">Info</string>
     <string name="pdf_preview_loading">Pratinjau PDF (Mendownload…)</string>
+    <string name="download_to_preview">Unduh untuk Pratinjau</string>
     <string name="error_pdf">Gagal memuat PDF: %1$s</string>
     <string name="pdf_page">Halaman %1$d</string>
     <string name="settings">Pengaturan</string>
@@ -133,7 +137,7 @@
     <string name="redirect_uri_msauth_label">Redirect URI (msauth://...)</string>
 
     <string name="google_guide">1. Buka Google Cloud Console.\n2. Aktifkan Drive API.\n3. Buat OAuth 2.0 Client ID (Web Application).\n4. Salin \'Client ID\' ke kolom di bawah ini.</string>
-    <string name="onedrive_guide">1. Buka Azure Portal -> App Registrations.\n2. Salin \'Application (client) ID\'.\n3. Di \'Authentication\', tambahkan platform Android dengan Nama Paket &amp; MSAL Signature Hash di atas.</string>
+    <string name="onedrive_guide">1. Buka Microsoft Entra admin center (sebelumnya Azure Portal).\n2. Salin \'Application (client) ID\'.\n3. Di \'Authentication\', tambahkan platform Android dengan Nama Paket &amp; SHA-1 (Base 64) di atas.</string>
     <string name="dropbox_guide">1. Buka Dropbox App Console.\n2. Buat App baru (Scoped access).\n3. Berikan izin \'files.content.read/write\'.\n4. Salin \'App Key\' di bawah.</string>
     <string name="box_guide">1. Buka Box Developer Console.\n2. Buat Custom App (OAuth 2.0).\n3. Salin \'Client ID\' dan \'Client Secret\' ke kolom di bawah.\n4. Tambahkan Redirect URI: \'awd-driverouter://box-auth\'.</string>
     <string name="webdav_guide">1. Masukkan URL server WebDAV lengkap.\n2. Masukkan Username dan Password.\n3. Contoh Nextcloud: \'https://domain.com/remote.php/dav/files/user/\'</string>

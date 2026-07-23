@@ -41,11 +41,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.awd.driverouter.R
 import com.awd.driverouter.domain.model.CloudFile
+import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.ui.components.ShareDialog
+import com.awd.driverouter.ui.components.BrandIcon
 import com.awd.driverouter.ui.screens.accounts.AccountsViewModel
 import com.awd.driverouter.util.FileIconHelper
 import com.awd.driverouter.util.formatSize
@@ -56,6 +59,7 @@ import java.util.*
 @Composable
 fun FileBrowserScreen(
     mode: String = "files",
+    isOnline: Boolean = true,
     onMenuClick: () -> Unit,
     viewModel: FilesViewModel = hiltViewModel(),
     accountsViewModel: AccountsViewModel = hiltViewModel()
@@ -71,6 +75,8 @@ fun FileBrowserScreen(
     
     val categoryFilter by viewModel.categoryFilter.collectAsState()
     val sortOrder by viewModel.sortOrder.collectAsState()
+    val searchScope by viewModel.searchScope.collectAsState()
+    val selectedAccountId by viewModel.selectedAccountId.collectAsState()
     val selectedFileIds by viewModel.selectedFileIds.collectAsState()
     val isSelectionMode = selectedFileIds.isNotEmpty()
     
@@ -86,6 +92,7 @@ fun FileBrowserScreen(
     }
 
     var isGridView by remember { mutableStateOf(false) }
+    var isSearchMode by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showAddOptions by remember { mutableStateOf(false) }
     var folderName by remember { mutableStateOf("") }
@@ -116,9 +123,12 @@ fun FileBrowserScreen(
         }
     }
 
-    BackHandler(enabled = (folderPath.size > 1) || selectedFileForPreview != null) {
+    BackHandler(enabled = (folderPath.size > 1) || selectedFileForPreview != null || isSearchMode) {
         if (selectedFileForPreview != null) {
             selectedFileForPreview = null
+        } else if (isSearchMode) {
+            isSearchMode = false
+            viewModel.onSearchQueryChange("")
         } else {
             viewModel.navigateBack()
         }
@@ -159,15 +169,62 @@ fun FileBrowserScreen(
                     }
                 )
             } else {
-                Column(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-                    UnifiedSearchBar(
-                        query = searchQuery,
-                        onQueryChange = viewModel::onSearchQueryChange,
-                        onMenuClick = onMenuClick,
-                        isGridView = isGridView,
-                        onToggleView = { isGridView = !isGridView },
-                        onRefresh = viewModel::refresh
-                    )
+                val isRoot = folderPath.size <= 1
+                Column(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    if (isRoot) {
+                        UnifiedSearchBar(
+                            query = searchQuery,
+                            onQueryChange = viewModel::onSearchQueryChange,
+                            onMenuClick = onMenuClick,
+                            isGridView = isGridView,
+                            onToggleView = { isGridView = !isGridView },
+                            onRefresh = viewModel::refresh,
+                            isOnline = isOnline
+                        )
+                        
+                        PageHeader(
+                            mode = mode, 
+                            folderName = folderPath.last().name,
+                            showAccountFilter = true,
+                            accounts = accounts,
+                            selectedAccountId = selectedAccountId,
+                            onAccountSelected = viewModel::selectAccount
+                        )
+                    } else {
+                        if (isSearchMode) {
+                            UnifiedSearchBar(
+                                query = searchQuery,
+                                onQueryChange = viewModel::onSearchQueryChange,
+                                onMenuClick = { 
+                                    isSearchMode = false
+                                    viewModel.onSearchQueryChange("")
+                                },
+                                isGridView = isGridView,
+                                onToggleView = { isGridView = !isGridView },
+                                onRefresh = viewModel::refresh,
+                                isSearchMode = true,
+                                isOnline = isOnline
+                            )
+                        } else {
+                            CompactTopAppBar(
+                                title = folderPath.last().name,
+                                isGridView = isGridView,
+                                onToggleView = { isGridView = !isGridView },
+                                onSearchClick = { isSearchMode = true },
+                                onRefresh = viewModel::refresh,
+                                onBack = { viewModel.navigateBack() },
+                                isOnline = isOnline
+                            )
+                        }
+                        
+                        BreadcrumbsRow(
+                            path = folderPath, 
+                            onNavigate = viewModel::navigateToBreadcrumb
+                        )
+                    }
                     
                     SmartFilterRow(
                         selectedCategory = categoryFilter,
@@ -175,11 +232,13 @@ fun FileBrowserScreen(
                         selectedSortOrder = sortOrder,
                         onSortOrderSelected = viewModel::setSortOrder
                     )
-                    
-                    PageHeader(mode = mode, folderName = folderPath.last().name)
-                    
-                    if (folderPath.size > 1) {
-                        BreadcrumbsRow(folderPath, viewModel::navigateToBreadcrumb)
+
+                    if (searchQuery.isNotEmpty() && folderPath.size > 1) {
+                        SearchScopeRow(
+                            selectedScope = searchScope,
+                            currentFolderName = folderPath.lastOrNull()?.name ?: "",
+                            onScopeSelected = viewModel::setSearchScope
+                        )
                     }
                 }
             }
@@ -187,15 +246,19 @@ fun FileBrowserScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { 
+                    if (!isOnline) {
+                        Toast.makeText(context, context.getString(R.string.offline_message), Toast.LENGTH_SHORT).show()
+                        return@FloatingActionButton
+                    }
                     if (hasAccounts) {
                         showAddOptions = true 
                     } else {
                         Toast.makeText(context, context.getString(R.string.connect_account_first), Toast.LENGTH_SHORT).show()
                     }
                 },
-                containerColor = if (hasAccounts) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (hasAccounts) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outline,
-                elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                containerColor = if (hasAccounts && isOnline) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (hasAccounts && isOnline) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outline,
+                elevation = FloatingActionButtonDefaults.elevation(if (isOnline) 4.dp else 0.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add), modifier = Modifier.size(32.dp))
             }
@@ -304,16 +367,38 @@ fun FileBrowserScreen(
                         }
                     }
                     "open_native" -> {
-                        selectedFileForAction!!.webViewLink?.let { url ->
+                        val localFile = viewModel.getLocalFile(selectedFileForAction!!)
+                        if (localFile != null) {
                             try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                val contentUri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    localFile
+                                )
+                                val extension = localFile.extension
+                                val mimeType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                                
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(contentUri, mimeType ?: selectedFileForAction!!.mimeType)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
                                 context.startActivity(intent)
                             } catch (e: Exception) {
                                 Toast.makeText(context, context.getString(R.string.no_app_to_open), Toast.LENGTH_SHORT).show()
                             }
-                        } ?: run {
-                            Toast.makeText(context, context.getString(R.string.downloading_to_open), Toast.LENGTH_SHORT).show()
-                            viewModel.downloadFile(selectedFileForAction!!)
+                        } else {
+                            selectedFileForAction!!.webViewLink?.let { url ->
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, context.getString(R.string.no_app_to_open), Toast.LENGTH_SHORT).show()
+                                }
+                            } ?: run {
+                                Toast.makeText(context, context.getString(R.string.downloading_to_open), Toast.LENGTH_SHORT).show()
+                                viewModel.downloadFile(selectedFileForAction!!)
+                            }
                         }
                     }
                     "web" -> {
@@ -424,6 +509,7 @@ fun FileBrowserScreen(
         ) {
             FullFilePreview(
                 file = selectedFileForPreview!!,
+                viewModel = viewModel,
                 onBack = { selectedFileForPreview = null },
                 onDownload = { 
                     viewModel.downloadFile(selectedFileForPreview!!)
@@ -431,6 +517,39 @@ fun FileBrowserScreen(
                 }
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchScopeRow(
+    selectedScope: SearchScope,
+    currentFolderName: String,
+    onScopeSelected: (SearchScope) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FilterChip(
+            selected = selectedScope == SearchScope.CURRENT_FOLDER,
+            onClick = { onScopeSelected(SearchScope.CURRENT_FOLDER) },
+            label = { Text(stringResource(R.string.search_this_folder)) },
+            leadingIcon = if (selectedScope == SearchScope.CURRENT_FOLDER) {
+                { Icon(Icons.Default.Folder, null, modifier = Modifier.size(16.dp)) }
+            } else null
+        )
+        FilterChip(
+            selected = selectedScope == SearchScope.ALL,
+            onClick = { onScopeSelected(SearchScope.ALL) },
+            label = { Text(stringResource(R.string.search_all)) },
+            leadingIcon = if (selectedScope == SearchScope.ALL) {
+                { Icon(Icons.Default.Public, null, modifier = Modifier.size(16.dp)) }
+            } else null
+        )
     }
 }
 
@@ -519,7 +638,17 @@ fun SmartFilterRow(
     }
 }
 @Composable
-fun PageHeader(mode: String, folderName: String) {
+fun PageHeader(
+    mode: String, 
+    folderName: String, 
+    onBack: (() -> Unit)? = null,
+    showAccountFilter: Boolean = false,
+    accounts: List<CloudAccount> = emptyList(),
+    selectedAccountId: String? = null,
+    onAccountSelected: (String?) -> Unit = {}
+) {
+    var showAccountMenu by remember { mutableStateOf(false) }
+
     val title = when (mode) {
         "recent" -> stringResource(R.string.nav_home)
         "starred" -> stringResource(R.string.nav_starred)
@@ -551,6 +680,13 @@ fun PageHeader(mode: String, folderName: String) {
             .padding(horizontal = 24.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (onBack != null) {
+            IconButton(onClick = onBack, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MaterialTheme.colorScheme.primary)
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+
         Surface(
             shape = CircleShape,
             color = color.copy(alpha = 0.1f),
@@ -565,9 +701,123 @@ fun PageHeader(mode: String, folderName: String) {
             text = title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f)
         )
+
+        if (showAccountFilter && accounts.size > 1) {
+            Box {
+                IconButton(onClick = { showAccountMenu = true }) {
+                    val currentAccount = accounts.find { it.id == selectedAccountId }
+                    if (currentAccount != null) {
+                        BrandIcon(providerId = currentAccount.provider.replace("_drive", ""), size = 24.dp)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Tune, 
+                            contentDescription = stringResource(R.string.filter_all_accounts),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                DropdownMenu(
+                    expanded = showAccountMenu,
+                    onDismissRequest = { showAccountMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.filter_all_accounts)) },
+                        onClick = { 
+                            onAccountSelected(null)
+                            showAccountMenu = false 
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+                        },
+                        trailingIcon = {
+                            if (selectedAccountId == null) {
+                                Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    )
+                    
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    
+                    accounts.forEach { account ->
+                        DropdownMenuItem(
+                            text = { 
+                                Column {
+                                    Text(account.name, style = MaterialTheme.typography.bodyMedium)
+                                    Text(account.email ?: "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                }
+                            },
+                            onClick = { 
+                                onAccountSelected(account.id)
+                                showAccountMenu = false 
+                            },
+                            leadingIcon = {
+                                BrandIcon(providerId = account.provider.replace("_drive", ""), size = 20.dp)
+                            },
+                            trailingIcon = {
+                                if (selectedAccountId == account.id) {
+                                    Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CompactTopAppBar(
+    title: String,
+    isGridView: Boolean,
+    onToggleView: () -> Unit,
+    onSearchClick: () -> Unit,
+    onRefresh: () -> Unit,
+    onBack: () -> Unit,
+    isOnline: Boolean = true
+) {
+    TopAppBar(
+        title = { 
+            Text(
+                text = title, 
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            ) 
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+            }
+        },
+        actions = {
+            IconButton(onClick = onSearchClick) {
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_placeholder))
+            }
+            IconButton(onClick = onToggleView) {
+                Icon(if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView, null)
+            }
+            IconButton(
+                onClick = onRefresh,
+                enabled = isOnline
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    tint = if (isOnline) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent
+        )
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -578,24 +828,31 @@ fun UnifiedSearchBar(
     onMenuClick: () -> Unit,
     isGridView: Boolean,
     onToggleView: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    isSearchMode: Boolean = false,
+    modifier: Modifier = Modifier,
+    isOnline: Boolean = true
 ) {
-    Box(modifier = Modifier.padding(16.dp).padding(top = 8.dp)) {
+    Box(modifier = modifier.padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 4.dp)) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            tonalElevation = 2.dp
+            color = if (isSearchMode) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            tonalElevation = if (isSearchMode) 4.dp else 2.dp,
+            border = if (isSearchMode) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu))
-            }
+                    Icon(
+                        if (isSearchMode) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Menu, 
+                        contentDescription = stringResource(if (isSearchMode) R.string.back else R.string.menu)
+                    )
+                }
                 Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) {
                         Text(
@@ -617,20 +874,29 @@ fun UnifiedSearchBar(
                         Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
                     }
                 }
-                IconButton(onClick = onToggleView) {
-                    Icon(if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView, contentDescription = if (isGridView) stringResource(R.string.view_list) else stringResource(R.string.view_grid))
+                if (!isSearchMode) {
+                    IconButton(onClick = onToggleView) {
+                        Icon(if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView, contentDescription = if (isGridView) stringResource(R.string.view_list) else stringResource(R.string.view_grid))
+                    }
+                    IconButton(
+                        onClick = onRefresh,
+                        enabled = isOnline
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh, 
+                            contentDescription = stringResource(R.string.sync),
+                            tint = if (isOnline) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
-                IconButton(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.sync))
-                }
-      }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FullFilePreview(file: CloudFile, onBack: () -> Unit, onDownload: () -> Unit) {
+fun FullFilePreview(file: CloudFile, viewModel: FilesViewModel, onBack: () -> Unit, onDownload: () -> Unit) {
     val context = LocalContext.current
     var showDetails by remember { mutableStateOf(false) }
     
@@ -664,7 +930,8 @@ fun FullFilePreview(file: CloudFile, onBack: () -> Unit, onDownload: () -> Unit)
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Transparent
-                )
+                ),
+                windowInsets = WindowInsets(0, 0, 0, 0)
             )
             
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -677,11 +944,24 @@ fun FullFilePreview(file: CloudFile, onBack: () -> Unit, onDownload: () -> Unit)
                         contentScale = ContentScale.Fit
                     )
                 } else if (file.mimeType == "application/pdf") {
-                    // In a real app, we'd check if it's cached/downloaded
-                    // For now, we'll show a "Download to Preview" or similar if not available
-                    // But the task says "internal preview", so we assume we have a way to get the File
-                    Text(stringResource(R.string.pdf_preview_loading), color = Color.White)
-                    // Implement actual download-then-show logic here if needed
+                    val localFile = viewModel.getLocalFile(file)
+                    if (localFile != null) {
+                        PdfPreviewScreen(file = localFile)
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(32.dp).fillMaxWidth()
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(stringResource(R.string.pdf_preview_loading), color = Color.White)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(onClick = { viewModel.downloadFile(file) }) {
+                                Text(stringResource(R.string.download_to_preview))
+                            }
+                        }
+                    }
                 } else {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -771,22 +1051,26 @@ fun DetailRow(label: String, value: String) {
 @Composable
 fun BreadcrumbsRow(path: List<FolderInfo>, onNavigate: (Int) -> Unit) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         itemsIndexed(path) { index, folder ->
             Text(
                 text = folder.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (index == path.size - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                modifier = Modifier.clickable { onNavigate(index) }.padding(horizontal = 4.dp)
+                style = MaterialTheme.typography.labelSmall,
+                color = if (index == path.size - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .clickable { onNavigate(index) }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             )
             if (index < path.size - 1) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.outline
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                 )
             }
         }
@@ -825,7 +1109,8 @@ fun ContextualTopAppBar(
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        ),
+        windowInsets = WindowInsets(0, 0, 0, 0)
     )
 }
 
@@ -1066,8 +1351,8 @@ fun FileIcon(file: CloudFile, size: androidx.compose.ui.unit.Dp = 48.dp) {
     val isFolder = file.isFolder
     val isImageOrVideo = mimeType.startsWith("image/") || mimeType.startsWith("video/")
     
-    val iconColor = FileIconHelper.getColorForMimeType(mimeType, isFolder)
-    val iconVector = FileIconHelper.getIconForMimeType(mimeType, isFolder)
+    val iconColor = FileIconHelper.getColorForMimeType(mimeType, isFolder, file.name)
+    val iconVector = FileIconHelper.getIconForMimeType(mimeType, isFolder, file.name)
 
     Surface(
         shape = RoundedCornerShape(14.dp),
