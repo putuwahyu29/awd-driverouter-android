@@ -1,6 +1,7 @@
 package com.awd.driverouter.domain.repository
 
 import com.awd.driverouter.domain.model.CloudFile
+import com.awd.driverouter.domain.model.SharePermission
 import kotlinx.coroutines.flow.Flow
 
 interface CloudRepository {
@@ -45,6 +46,8 @@ interface CloudRepository {
     suspend fun renameFile(file: CloudFile, newName: String): Result<CloudFile>
 
     suspend fun updateGeneralAccess(file: CloudFile, isPublic: Boolean): Result<Unit>
+
+    suspend fun getPermissions(file: CloudFile): Result<List<SharePermission>>
 
     suspend fun getAccountById(accountId: String): com.awd.driverouter.domain.model.CloudAccount?
     

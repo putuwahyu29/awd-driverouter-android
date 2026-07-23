@@ -89,6 +89,7 @@
     <string name="downloading_to_open">Mendownload file untuk dibuka…</string>
     <string name="downloading_multiple">Mengunduh %1$d file…</string>
     <string name="share_success">Berhasil membagikan file ke %1$s</string>
+    <string name="share_link_desc">Provider ini mendukung berbagi melalui tautan publik.</string>
     <string name="general_access">Akses Umum</string>
     <string name="restricted">Dibatasi</string>
     <string name="restricted_desc">Hanya orang yang ditambahkan yang dapat membuka dengan link ini</string>
@@ -237,7 +238,9 @@
     <string name="version">Versi %1$s</string>
     <string name="github_repo">Repositori GitHub</string>
     <string name="check_updates">Periksa Pembaruan</string>
-    <string name="developed_by">Dikembangkan oleh putuwahyu29</string>
+    <string name="official_website">Situs Web Resmi</string>
+    <string name="license">Lisensi MIT</string>
+    <string name="developed_by">Dikembangkan oleh I Putu Agus Wahyu Dupayana</string>
 
     <!-- Transfers Screen -->
     <string name="transfers_title">Transfer</string>

@@ -102,6 +102,7 @@
     <string name="permission_viewer">Pelihat</string>
     <string name="permission_editor">Editor</string>
     <string name="copy_link_done">Link disalin ke papan klip</string>
+    <string name="copy_link">Salin Link</string>
     <string name="share_unsupported">Provider ini tidak mendukung fitur berbagi native</string>
     <string name="add">Tambah</string>
     <string name="menu">Menu</string>
@@ -113,9 +114,28 @@
     <string name="view_list">Tampilan Daftar</string>
     <string name="view_grid">Tampilan Grid</string>
     <string name="info">Info</string>
+    <string name="permission_role">Peran</string>
+    <string name="who_has_access">Siapa yang memiliki akses</string>
+    <string name="unknown_user">Pengguna tidak dikenal</string>
     <string name="pdf_preview_loading">Pratinjau PDF (Mendownload…)</string>
     <string name="download_to_preview">Unduh untuk Pratinjau</string>
     <string name="error_pdf">Gagal memuat PDF: %1$s</string>
+    <string name="error_text">Gagal memuat Teks: %1$s</string>
+    <string name="error_audio">Gagal memuat Audio: %1$s</string>
+    <string name="error_video">Gagal memuat Video: %1$s</string>
+    <string name="error_archive">Gagal memuat Arsip: %1$s</string>
+    <string name="file_too_large">File terlalu besar untuk dipratinjau (%1$s)</string>
+    <string name="audio_preview_loading">Pratinjau Audio (Mengunduh…)</string>
+    <string name="video_preview_loading">Pratinjau Video (Mengunduh…)</string>
+    <string name="markdown_preview_loading">Pratinjau Markdown (Mengunduh…)</string>
+    <string name="archive_preview_loading">Pratinjau Arsip (Mengunduh…)</string>
+    <string name="play">Putar</string>
+    <string name="pause">Jeda</string>
+    <string name="unknown_artist">Artis Tidak Dikenal</string>
+    <string name="unknown_title">Judul Tidak Dikenal</string>
+    <string name="archive_empty">Arsip ini kosong</string>
+    <string name="archive_entry_count">%1$d entri</string>
+    <string name="compressed_size">Terkompresi: %1$s</string>
     <string name="pdf_page">Halaman %1$d</string>
     <string name="settings">Pengaturan</string>
     <string name="copy">Salin</string>
@@ -241,10 +261,13 @@
     <string name="version">Versi %1$s</string>
     <string name="github_repo">Repositori GitHub</string>
     <string name="check_updates">Periksa Pembaruan</string>
-    <string name="developed_by">Dikembangkan oleh putuwahyu29</string>
+    <string name="official_website">Situs Web Resmi</string>
+    <string name="license">Lisensi MIT</string>
+    <string name="developed_by">Dikembangkan oleh I Putu Agus Wahyu Dupayana</string>
 
     <!-- Transfers Screen -->
     <string name="transfers_title">Transfer</string>
+    <string name="transfers_in_progress">%1$d transfer sedang berlangsung</string>
     <string name="no_transfers">Tidak ada transfer terbaru</string>
     <string name="clear_history">Hapus Riwayat</string>
     <string name="clear_history_confirm">Apakah Anda yakin ingin menghapus semua riwayat transfer yang sudah selesai atau gagal?</string>

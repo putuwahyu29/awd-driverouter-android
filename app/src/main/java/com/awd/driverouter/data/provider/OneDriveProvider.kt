@@ -4,6 +4,7 @@ import com.awd.driverouter.data.remote.OneDriveAuthManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
 import com.awd.driverouter.domain.model.QuotaInfo
+import com.awd.driverouter.domain.model.SharePermission
 import com.awd.driverouter.domain.provider.CloudProvider
 import com.microsoft.graph.authentication.IAuthenticationProvider
 import com.microsoft.graph.models.DriveItem
@@ -70,7 +71,7 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.get()
+                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
             }
             
             Result.success(allFiles)
@@ -86,7 +87,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().following().buildRequest().get()
+            var page = client.me().drive().following().buildRequest().expand("permissions").get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account) }
@@ -94,7 +95,7 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.get()
+                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
             }
             Result.success(allFiles)
         } catch (e: Exception) {
@@ -109,7 +110,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().recent().buildRequest().get()
+            var page = client.me().drive().recent().buildRequest().expand("permissions").get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account) }
@@ -117,7 +118,7 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.get()
+                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
             }
             Result.success(allFiles)
         } catch (e: Exception) {
@@ -132,7 +133,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().sharedWithMe().buildRequest().get()
+            var page = client.me().drive().sharedWithMe().buildRequest().expand("permissions").get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account) }
@@ -140,7 +141,7 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.get()
+                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
             }
             Result.success(allFiles)
         } catch (e: Exception) {
@@ -155,7 +156,7 @@ class OneDriveProvider @Inject constructor(
         val client = getGraphClient(account)
         return try {
             val allFiles = mutableListOf<CloudFile>()
-            var page = client.me().drive().special("trash").children().buildRequest().get()
+            var page = client.me().drive().special("trash").children().buildRequest().expand("permissions").get()
             
             while (page != null) {
                 val currentBatch = page.currentPage.map { it.toCloudFile(account).copy(isTrashed = true) }
@@ -163,7 +164,7 @@ class OneDriveProvider @Inject constructor(
                 onPartialResult?.invoke(currentBatch)
                 
                 val nextPageRequest = page.nextPage
-                page = nextPageRequest?.buildRequest()?.get()
+                page = nextPageRequest?.buildRequest()?.expand("permissions")?.get()
             }
             Result.success(allFiles)
         } catch (e: Exception) {
@@ -195,6 +196,7 @@ class OneDriveProvider @Inject constructor(
             isTrashed = false,
             lastAccessedTime = this.lastModifiedDateTime?.toInstant()?.toEpochMilli(),
             supportsNativeSharing = true,
+            supportsMemberSharing = true,
             isOwner = this.remoteItem == null
         )
     }
@@ -302,6 +304,7 @@ class OneDriveProvider @Inject constructor(
     }
 
     override fun supportsSharing(): Boolean = true
+    override fun supportsMemberSharing(): Boolean = true
 
     override suspend fun shareFile(account: CloudAccount, fileId: String, email: String, role: String): Result<Unit> {
         val client = getGraphClient(account)
@@ -341,6 +344,30 @@ class OneDriveProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPermissions(account: CloudAccount, fileId: String): Result<List<SharePermission>> {
+        val client = getGraphClient(account)
+        return try {
+            val permissions = client.me().drive().items(fileId).permissions().buildRequest().get()
+            val domainPermissions = permissions?.currentPage?.map { p ->
+                val type = if (p.link != null) "anyone" else "user"
+                val email = p.invitation?.email ?: p.grantedToV2?.user?.additionalDataManager()?.get("email")?.asString
+                val displayName = p.grantedToV2?.user?.displayName ?: p.invitation?.email ?: if (p.link != null) "Anyone with link" else "Unknown User"
+                
+                SharePermission(
+                    id = p.id ?: "",
+                    email = email,
+                    role = p.roles?.firstOrNull() ?: "",
+                    displayName = displayName,
+                    photoLink = null,
+                    type = type
+                )
+            } ?: emptyList()
+            Result.success(domainPermissions)
         } catch (e: Exception) {
             Result.failure(e)
         }

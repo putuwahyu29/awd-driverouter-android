@@ -43,6 +43,15 @@
 -keep class retrofit2.** { *; }
 -keep interface retrofit2.** { *; }
 
+# Preserve generic signatures of Retrofit interfaces for suspend functions
+-keepclassmembernames interface * {
+    @retrofit2.http.* <methods>;
+}
+
+# Keep the update service and its data model
+-keep class com.awd.driverouter.data.remote.GitHubUpdateService { *; }
+-keep class com.awd.driverouter.data.remote.GitHubRelease { *; }
+
 # OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**

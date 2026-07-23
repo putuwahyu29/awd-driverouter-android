@@ -5,6 +5,7 @@ import com.awd.driverouter.data.remote.GoogleAuthManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
 import com.awd.driverouter.domain.model.QuotaInfo
+import com.awd.driverouter.domain.model.SharePermission
 import com.awd.driverouter.domain.provider.CloudProvider
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
@@ -13,6 +14,7 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.File as GoogleFile
+import com.google.api.services.drive.model.Permission
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
@@ -154,6 +156,7 @@ class GoogleDriveProvider @Inject constructor(
             isTrashed = this.explicitlyTrashed ?: this.trashed ?: false,
             lastAccessedTime = this.viewedByMeTime?.value,
             supportsNativeSharing = true,
+            supportsMemberSharing = true,
             isOwner = this.ownedByMe ?: true
         )
     }
@@ -261,6 +264,7 @@ class GoogleDriveProvider @Inject constructor(
     }
 
     override fun supportsSharing(): Boolean = true
+    override fun supportsMemberSharing(): Boolean = true
 
     override suspend fun shareFile(account: CloudAccount, fileId: String, email: String, role: String): Result<Unit> {
         val service = getDriveService(account)
@@ -281,7 +285,7 @@ class GoogleDriveProvider @Inject constructor(
         val service = getDriveService(account)
         return try {
             if (isPublic) {
-                val permission = com.google.api.services.drive.model.Permission().apply {
+                val permission = Permission().apply {
                     type = "anyone"
                     role = "reader"
                 }
@@ -294,6 +298,29 @@ class GoogleDriveProvider @Inject constructor(
                 }
             }
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPermissions(account: CloudAccount, fileId: String): Result<List<SharePermission>> {
+        val service = getDriveService(account)
+        return try {
+            val permissions = service.permissions().list(fileId)
+                .setFields("permissions(id, emailAddress, role, displayName, photoLink, type)")
+                .execute().permissions ?: emptyList()
+            
+            val domainPermissions = permissions.map { p ->
+                SharePermission(
+                    id = p.id,
+                    email = p.emailAddress,
+                    role = p.role,
+                    displayName = p.displayName,
+                    photoLink = p.photoLink,
+                    type = p.type
+                )
+            }
+            Result.success(domainPermissions)
         } catch (e: Exception) {
             Result.failure(e)
         }

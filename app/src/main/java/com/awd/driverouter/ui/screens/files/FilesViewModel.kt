@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.awd.driverouter.R
 import com.awd.driverouter.domain.model.CloudFile
+import com.awd.driverouter.domain.model.SharePermission
+import com.awd.driverouter.domain.model.Transfer
 import com.awd.driverouter.domain.repository.CloudRepository
+import com.awd.driverouter.domain.repository.TransferRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
@@ -22,7 +25,8 @@ enum class SearchScope { ALL, CURRENT_FOLDER }
 @HiltViewModel
 class FilesViewModel @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
-    private val repository: CloudRepository
+    private val repository: CloudRepository,
+    private val transferRepository: TransferRepository
 ) : ViewModel() {
 
     private val _rawFilesState = MutableStateFlow<FilesUiState>(FilesUiState.Loading)
@@ -96,6 +100,12 @@ class FilesViewModel @Inject constructor(
 
     private val _errorEvent = MutableSharedFlow<String>()
     val errorEvent: SharedFlow<String> = _errorEvent.asSharedFlow()
+
+    private val _permissions = MutableStateFlow<List<SharePermission>>(emptyList())
+    val permissions: StateFlow<List<SharePermission>> = _permissions.asStateFlow()
+
+    private val _isPermissionsLoading = MutableStateFlow(false)
+    val isPermissionsLoading: StateFlow<Boolean> = _isPermissionsLoading.asStateFlow()
 
     private var loadJob: Job? = null
     private var syncJob: Job? = null
@@ -310,6 +320,10 @@ class FilesViewModel @Inject constructor(
         viewModelScope.launch { repository.downloadFile(file) }
     }
 
+    fun getTransferProgress(fileId: String): Flow<Transfer?> {
+        return transferRepository.getTransferByFileId(fileId)
+    }
+
     fun getLocalFile(file: CloudFile): File? {
         val downloadsDir = File(context.getExternalFilesDir(null), "Downloads")
         val localFile = File(downloadsDir, file.name)
@@ -421,11 +435,23 @@ class FilesViewModel @Inject constructor(
     fun setGeneralAccess(file: CloudFile, isPublic: Boolean) {
         viewModelScope.launch {
             repository.updateGeneralAccess(file, isPublic).onSuccess {
-                // Refresh to update UI state
                 refresh()
+                loadPermissions(file)
             }.onFailure {
                 _errorEvent.emit(it.message ?: "Gagal mengubah akses umum")
             }
+        }
+    }
+
+    fun loadPermissions(file: CloudFile) {
+        viewModelScope.launch {
+            _isPermissionsLoading.value = true
+            repository.getPermissions(file).onSuccess {
+                _permissions.value = it
+            }.onFailure {
+                _errorEvent.emit(it.message ?: "Gagal memuat izin")
+            }
+            _isPermissionsLoading.value = false
         }
     }
 

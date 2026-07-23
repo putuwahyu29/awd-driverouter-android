@@ -88,7 +88,9 @@ class DropboxProvider @Inject constructor(
             isTrashed = false,
             ownerDisplayName = account.name,
             thumbnailLink = null,
-            webViewLink = "https://www.dropbox.com/home${this.pathDisplay}"
+            webViewLink = "https://www.dropbox.com/home${this.pathDisplay}",
+            supportsNativeSharing = true,
+            supportsMemberSharing = false
         )
     }
 
@@ -207,6 +209,44 @@ class DropboxProvider @Inject constructor(
         return try {
             val usage = client.users().getSpaceUsage()
             Result.success(QuotaInfo(usedSpace = usage.used, totalSpace = usage.allocation.individualValue.allocated))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun supportsSharing(): Boolean = true
+
+    override suspend fun setGeneralAccess(account: CloudAccount, fileId: String, isPublic: Boolean): Result<Unit> {
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val path = if (fileId.startsWith("id:")) fileId else "/$fileId"
+            if (isPublic) {
+                try {
+                    client.sharing().createSharedLinkWithSettings(path)
+                } catch (e: com.dropbox.core.v2.sharing.CreateSharedLinkWithSettingsErrorException) {
+                    if (e.errorValue.isSharedLinkAlreadyExists) {
+                        // Link already exists, nothing to do
+                    } else throw e
+                }
+            } else {
+                val links = client.sharing().listSharedLinksBuilder().withPath(path).withDirectOnly(true).start()
+                links.links.forEach { link ->
+                    client.sharing().revokeSharedLink(link.url)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getShareLink(account: CloudAccount, fileId: String): Result<String> {
+        val client = authManager.getClient(account.id) ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val path = if (fileId.startsWith("id:")) fileId else "/$fileId"
+            val links = client.sharing().listSharedLinksBuilder().withPath(path).withDirectOnly(true).start()
+            val link = links.links.firstOrNull()?.url ?: client.sharing().createSharedLinkWithSettings(path).url
+            Result.success(link)
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -11,6 +11,9 @@ interface TransferDao {
     @Query("SELECT * FROM transfers ORDER BY id DESC")
     fun getAllTransfers(): Flow<List<TransferEntity>>
 
+    @Query("SELECT * FROM transfers WHERE fileId = :fileId AND status != 'COMPLETED' AND status != 'FAILED' ORDER BY id DESC LIMIT 1")
+    fun getTransferByFileId(fileId: String): Flow<TransferEntity?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransfer(transfer: TransferEntity)
 

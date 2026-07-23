@@ -3,13 +3,16 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Yellow segment (Top-Left) -->
     <path
         android:fillColor="#FFC107"
-        android:pathData="M9.12,1.9L2.3,13.71L5.66,19.6H12.48L9.12,1.9Z"/>
+        android:pathData="M8.2,3.5L1.6,15l3.5,6.1L11.7,9.6L8.2,3.5z"/>
+    <!-- Blue segment (Top-Right) -->
     <path
-        android:fillColor="#2196F3"
-        android:pathData="M21.7,13.71L14.88,1.9H8.12L14.94,13.71H21.7Z"/>
+        android:fillColor="#1976D2"
+        android:pathData="M15.8,3.5H8.2l6.6,11.5h7.6L15.8,3.5z"/>
+    <!-- Green segment (Bottom) -->
     <path
         android:fillColor="#4CAF50"
-        android:pathData="M14.94,13.71L11.58,19.6H4.76L11.42,13.71H14.94Z"/>
+        android:pathData="M5.1,21.1l3.5,-6.1h13.2l-3.5,6.1H5.1z"/>
 </vector>

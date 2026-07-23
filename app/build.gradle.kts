@@ -25,8 +25,8 @@ android {
         applicationId = "com.awd.driverouter"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -183,6 +183,11 @@ dependencies {
     // New Providers
     implementation(libs.sardine.android)
     implementation(libs.sshj)
+
+    // Media3
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.markdown.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

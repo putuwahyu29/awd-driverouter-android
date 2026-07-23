@@ -8,6 +8,8 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.awd.driverouter.data.local.BackupDao
+import com.awd.driverouter.data.local.CloudFileDao
+import com.awd.driverouter.data.local.toDomain
 import com.awd.driverouter.domain.manager.AllocationManager
 import com.awd.driverouter.domain.repository.CloudRepository
 import dagger.assisted.Assisted
@@ -21,6 +23,7 @@ class BackupWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: CloudRepository,
     private val backupDao: BackupDao,
+    private val cloudFileDao: CloudFileDao,
     private val allocationManager: AllocationManager
 ) : CoroutineWorker(context, params) {
 
@@ -50,8 +53,13 @@ class BackupWorker @AssistedInject constructor(
 
                 // For each account, ensure cloud folder exists and upload files
                 targetAccountIds.forEach { accountId ->
-                    val createResult = repository.createFolder(config.cloudFolderName, null, accountId)
-                    val cloudParentFolder = createResult.getOrNull()
+                    val existingFolder = cloudFileDao.getFileByNameInFolder(config.cloudFolderName, null, accountId)
+                    val cloudParentFolder = if (existingFolder != null) {
+                        existingFolder.toDomain()
+                    } else {
+                        val createResult = repository.createFolder(config.cloudFolderName, null, accountId)
+                        createResult.getOrNull()
+                    }
                     
                     if (cloudParentFolder == null) {
                         Log.e("BackupWorker", "Failed to ensure cloud folder for account $accountId")
@@ -61,9 +69,17 @@ class BackupWorker @AssistedInject constructor(
 
                     val files = rootFolder.listFiles()
                     files.filter { it.isFile }.forEach { file ->
-                        // In a real app, we should check if file already exists/changed
-                        // For simplicity, we just trigger upload
-                        repository.uploadFile(file.uri, cloudParentFolder, accountId)
+                        val existingFile = cloudFileDao.getFileByNameInFolder(file.name ?: "", cloudParentFolder.id, accountId)
+                        
+                        // Check if upload is needed: if not exists OR size changed
+                        val shouldUpload = existingFile == null || (file.length() > 0 && existingFile.size != file.length())
+                        
+                        if (shouldUpload) {
+                            Log.d("BackupWorker", "Uploading ${file.name} to account $accountId")
+                            repository.uploadFile(file.uri, cloudParentFolder, accountId)
+                        } else {
+                            Log.d("BackupWorker", "Skipping ${file.name}, already exists in account $accountId")
+                        }
                     }
 
                     // 2-Way Sync: Basic implementation (Download new files from cloud)

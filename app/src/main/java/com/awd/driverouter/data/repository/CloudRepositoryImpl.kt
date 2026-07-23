@@ -6,6 +6,7 @@ import com.awd.driverouter.data.local.*
 import com.awd.driverouter.domain.manager.AllocationManager
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
+import com.awd.driverouter.domain.model.SharePermission
 import com.awd.driverouter.domain.provider.CloudProvider
 import com.awd.driverouter.domain.repository.CloudRepository
 import com.awd.driverouter.domain.repository.TransferRepository
@@ -344,6 +345,21 @@ class CloudRepositoryImpl @Inject constructor(
                 dao.insertFiles(listOf(updatedFile.toEntity()))
             }
             result
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPermissions(file: CloudFile): Result<List<SharePermission>> = withContext(Dispatchers.IO) {
+        try {
+            val accounts = accountDao.getAllAccounts().first()
+            val accountEntity = accounts.find { it.id == file.accountId }
+                ?: return@withContext Result.failure(Exception("Account not found"))
+            
+            val provider = providers.find { it.providerId == accountEntity.providerId }
+                ?: return@withContext Result.failure(Exception("Provider not found"))
+                
+            provider.getPermissions(accountEntity.toDomain(), file.id)
         } catch (e: Exception) {
             Result.failure(e)
         }

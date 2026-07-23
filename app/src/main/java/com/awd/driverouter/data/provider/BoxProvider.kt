@@ -8,8 +8,10 @@ import com.awd.driverouter.domain.provider.CloudProvider
 import com.box.sdk.BoxFile
 import com.box.sdk.BoxFolder
 import com.box.sdk.BoxItem
+import com.box.sdk.BoxSharedLink
 import com.box.sdk.BoxUser
 import com.box.sdk.ProgressListener
+import com.box.sdk.sharedlink.BoxSharedLinkRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -99,7 +101,9 @@ class BoxProvider @Inject constructor(
             modifiedTime = this.modifiedAt?.time,
             isTrashed = false,
             thumbnailLink = null,
-            webViewLink = "https://app.box.com/${if (isFolder) "folder" else "file"}/${this.id}"
+            webViewLink = "https://app.box.com/${if (isFolder) "folder" else "file"}/${this.id}",
+            supportsNativeSharing = true,
+            supportsMemberSharing = false
         )
     }
 
@@ -223,4 +227,41 @@ class BoxProvider @Inject constructor(
                 Result.failure(e)
             }
         }
+
+    override fun supportsSharing(): Boolean = true
+
+    override suspend fun setGeneralAccess(account: CloudAccount, fileId: String, isPublic: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        val api = authManager.getApiConnection(account.id) ?: return@withContext Result.failure(Exception("Not logged in"))
+        return@withContext try {
+            val file = BoxFile(api, fileId)
+            if (isPublic) {
+                val request = BoxSharedLinkRequest().access(BoxSharedLink.Access.OPEN)
+                file.createSharedLink(request)
+            } else {
+                val info = file.getInfo("shared_link")
+                info.removeSharedLink()
+                file.updateInfo(info)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getShareLink(account: CloudAccount, fileId: String): Result<String> = withContext(Dispatchers.IO) {
+        val api = authManager.getApiConnection(account.id) ?: return@withContext Result.failure(Exception("Not logged in"))
+        return@withContext try {
+            val file = BoxFile(api, fileId)
+            val info = file.getInfo("shared_link")
+            if (info.sharedLink == null) {
+                val request = BoxSharedLinkRequest().access(BoxSharedLink.Access.OPEN)
+                val sharedLink = file.createSharedLink(request)
+                Result.success(sharedLink.url)
+            } else {
+                Result.success(info.sharedLink.url)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

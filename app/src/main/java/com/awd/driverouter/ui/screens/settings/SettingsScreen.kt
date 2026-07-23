@@ -20,19 +20,26 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.awd.driverouter.BuildConfig
 import com.awd.driverouter.R
 import com.awd.driverouter.data.local.AppLanguage
 import com.awd.driverouter.data.local.AppTheme
+import com.awd.driverouter.ui.screens.about.UpdateUiState
+import com.awd.driverouter.ui.screens.about.UpdateViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    updateViewModel: UpdateViewModel = hiltViewModel()
 ) {
     val theme by viewModel.theme.collectAsState()
     val language by viewModel.language.collectAsState()
     val appLockEnabled by viewModel.isAppLockEnabled.collectAsState()
+
+    val updateUiState by updateViewModel.uiState.collectAsState()
+    val currentVersion = BuildConfig.VERSION_NAME
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -104,13 +111,27 @@ fun SettingsScreen(
                 context.startActivity(intent)
             }
             SettingsItem(
+                title = stringResource(R.string.official_website),
+                icon = Icons.Default.Public,
+                summary = "driverouter.biz.id"
+            ) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://driverouter.biz.id"))
+                context.startActivity(intent)
+            }
+            SettingsItem(
+                title = stringResource(R.string.license),
+                icon = Icons.Default.Description,
+                summary = "MIT License"
+            ) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/putuwahyu29/awd-driverouter-android/blob/main/LICENSE"))
+                context.startActivity(intent)
+            }
+            SettingsItem(
                 title = stringResource(R.string.check_updates),
                 icon = Icons.Default.Update,
-                summary = stringResource(R.string.version, "1.0.0")
+                summary = stringResource(R.string.version, currentVersion)
             ) {
-                // Direction to github releases
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/putuwahyu29/awd-driverouter-android/releases"))
-                context.startActivity(intent)
+                updateViewModel.checkForUpdates(currentVersion)
             }
             
             Text(
@@ -159,6 +180,74 @@ fun SettingsScreen(
             },
             onDismiss = { showLanguageDialog = false }
         )
+    }
+
+    // Update Dialogs
+    when (val state = updateUiState) {
+        is UpdateUiState.NewVersionAvailable -> {
+            AlertDialog(
+                onDismissRequest = { updateViewModel.resetState() },
+                title = { Text(stringResource(R.string.update_available)) },
+                text = { Text(stringResource(R.string.update_message, state.release.tag_name, state.release.body)) },
+                confirmButton = {
+                    Button(onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(state.release.html_url))
+                        context.startActivity(intent)
+                        updateViewModel.resetState()
+                    }) {
+                        Text(stringResource(R.string.download))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { updateViewModel.resetState() }) {
+                        Text(stringResource(R.string.later))
+                    }
+                }
+            )
+        }
+        is UpdateUiState.UpToDate -> {
+            AlertDialog(
+                onDismissRequest = { updateViewModel.resetState() },
+                title = { Text(stringResource(R.string.app_up_to_date)) },
+                text = { Text(stringResource(R.string.up_to_date_message, currentVersion)) },
+                confirmButton = {
+                    Button(onClick = { updateViewModel.resetState() }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                }
+            )
+        }
+        is UpdateUiState.Error -> {
+            AlertDialog(
+                onDismissRequest = { updateViewModel.resetState() },
+                title = { Text(stringResource(R.string.error)) },
+                text = { Text(state.message) },
+                confirmButton = {
+                    Button(onClick = { updateViewModel.resetState() }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                }
+            )
+        }
+        is UpdateUiState.Checking -> {
+            AlertDialog(
+                onDismissRequest = { /* Cannot dismiss while checking */ },
+                title = { Text(stringResource(R.string.check_updates)) },
+                text = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(stringResource(R.string.processing))
+                    }
+                },
+                confirmButton = {}
+            )
+        }
+        else -> {}
     }
 }
 

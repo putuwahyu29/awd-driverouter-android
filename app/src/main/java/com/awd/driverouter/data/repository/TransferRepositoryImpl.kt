@@ -42,6 +42,10 @@ class TransferRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getTransferByFileId(fileId: String): Flow<Transfer?> {
+        return dao.getTransferByFileId(fileId).map { it?.toDomain() }
+    }
+
     override suspend fun startDownload(file: CloudFile) {
         val transferId = UUID.randomUUID().toString()
         val account = accountDao.getAllAccounts().first().find { it.id == file.accountId }

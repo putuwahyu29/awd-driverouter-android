@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -487,14 +488,22 @@ fun FileBrowserScreen(
 
     if (showShareDialog && selectedFileForAction != null) {
         val liveFile = (uiState as? FilesUiState.Success)?.files?.find { it.id == selectedFileForAction?.id } ?: selectedFileForAction!!
+        val permissions by viewModel.permissions.collectAsState()
+        val isLoadingPermissions by viewModel.isPermissionsLoading.collectAsState()
+        
         ShareDialog(
-            file = liveFile, 
+            file = liveFile,
+            permissions = permissions,
+            isLoadingPermissions = isLoadingPermissions,
             onDismiss = { showShareDialog = false },
             onShare = { email, role ->
                 viewModel.shareFile(liveFile, email, role)
             },
             onSetGeneralAccess = { isPublic ->
                 viewModel.setGeneralAccess(liveFile, isPublic)
+            },
+            onRefresh = {
+                viewModel.loadPermissions(liveFile)
             }
         )
     }
@@ -935,6 +944,23 @@ fun FullFilePreview(file: CloudFile, viewModel: FilesViewModel, onBack: () -> Un
             )
             
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val mimeType = file.mimeType.lowercase()
+                val extension = file.name.substringAfterLast('.', "").lowercase()
+                val isTextFile = mimeType.startsWith("text/") || 
+                                extension in listOf("kt", "java", "py", "js", "json", "xml", "html", "css", "sh", "bat", "sql", "txt", "log") ||
+                                mimeType == "application/json" || mimeType == "application/xml" || mimeType == "application/javascript"
+                
+                val isMarkdown = extension == "md" || mimeType == "text/markdown"
+                
+                val isArchive = extension in listOf("zip", "rar", "7z", "tar", "gz") ||
+                               mimeType in listOf("application/zip", "application/x-rar-compressed", "application/x-7z-compressed")
+
+                val isAudioFile = mimeType.startsWith("audio/") || 
+                                 extension in listOf("mp3", "wav", "m4a", "ogg", "flac", "aac")
+                
+                val isVideoFile = mimeType.startsWith("video/") || 
+                                 extension in listOf("mp4", "mkv", "avi", "mov", "wmv", "flv", "webm")
+
                 if (file.mimeType.startsWith("image/")) {
                     val highResUrl = file.thumbnailLink?.replace("=s220", "=s2048") ?: file.id
                     AsyncImage(
@@ -948,17 +974,220 @@ fun FullFilePreview(file: CloudFile, viewModel: FilesViewModel, onBack: () -> Un
                     if (localFile != null) {
                         PdfPreviewScreen(file = localFile)
                     } else {
+                        val transfer by viewModel.getTransferProgress(file.id).collectAsState(null)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                             modifier = Modifier.padding(32.dp).fillMaxWidth()
                         ) {
-                            CircularProgressIndicator(color = Color.White)
+                            if (transfer != null) {
+                                LinearProgressIndicator(
+                                    progress = transfer!!.progress,
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.White.copy(alpha = 0.2f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "${(transfer!!.progress * 100).toInt()}%",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            } else {
+                                CircularProgressIndicator(color = Color.White)
+                            }
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(stringResource(R.string.pdf_preview_loading), color = Color.White)
                             Spacer(modifier = Modifier.height(24.dp))
-                            Button(onClick = { viewModel.downloadFile(file) }) {
-                                Text(stringResource(R.string.download_to_preview))
+                            if (transfer == null) {
+                                Button(onClick = { viewModel.downloadFile(file) }) {
+                                    Text(stringResource(R.string.download_to_preview))
+                                }
+                            }
+                        }
+                    }
+                } else if (isTextFile) {
+                    val localFile = viewModel.getLocalFile(file)
+                    if (localFile != null) {
+                        TextPreviewScreen(file = localFile)
+                    } else {
+                        val transfer by viewModel.getTransferProgress(file.id).collectAsState(null)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(32.dp).fillMaxWidth()
+                        ) {
+                            if (transfer != null) {
+                                LinearProgressIndicator(
+                                    progress = transfer!!.progress,
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.White.copy(alpha = 0.2f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "${(transfer!!.progress * 100).toInt()}%",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            } else {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(stringResource(R.string.text_preview_loading), color = Color.White)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            if (transfer == null) {
+                                Button(onClick = { viewModel.downloadFile(file) }) {
+                                    Text(stringResource(R.string.download_to_preview))
+                                }
+                            }
+                        }
+                    }
+                } else if (isMarkdown) {
+                    val localFile = viewModel.getLocalFile(file)
+                    if (localFile != null) {
+                        MarkdownPreviewScreen(file = localFile)
+                    } else {
+                        val transfer by viewModel.getTransferProgress(file.id).collectAsState(null)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(32.dp).fillMaxWidth()
+                        ) {
+                            if (transfer != null) {
+                                LinearProgressIndicator(
+                                    progress = transfer!!.progress,
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.White.copy(alpha = 0.2f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "${(transfer!!.progress * 100).toInt()}%",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            } else {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(stringResource(R.string.markdown_preview_loading), color = Color.White)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            if (transfer == null) {
+                                Button(onClick = { viewModel.downloadFile(file) }) {
+                                    Text(stringResource(R.string.download_to_preview))
+                                }
+                            }
+                        }
+                    }
+                } else if (isArchive) {
+                    val localFile = viewModel.getLocalFile(file)
+                    if (localFile != null) {
+                        ArchiveExplorerScreen(file = localFile)
+                    } else {
+                        val transfer by viewModel.getTransferProgress(file.id).collectAsState(null)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(32.dp).fillMaxWidth()
+                        ) {
+                            if (transfer != null) {
+                                LinearProgressIndicator(
+                                    progress = transfer!!.progress,
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.White.copy(alpha = 0.2f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "${(transfer!!.progress * 100).toInt()}%",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            } else {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(stringResource(R.string.archive_preview_loading), color = Color.White)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            if (transfer == null) {
+                                Button(onClick = { viewModel.downloadFile(file) }) {
+                                    Text(stringResource(R.string.download_to_preview))
+                                }
+                            }
+                        }
+                    }
+                } else if (isAudioFile) {
+                    val localFile = viewModel.getLocalFile(file)
+                    if (localFile != null) {
+                        AudioPreviewScreen(file = localFile)
+                    } else {
+                        val transfer by viewModel.getTransferProgress(file.id).collectAsState(null)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(32.dp).fillMaxWidth()
+                        ) {
+                            if (transfer != null) {
+                                LinearProgressIndicator(
+                                    progress = transfer!!.progress,
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.White.copy(alpha = 0.2f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "${(transfer!!.progress * 100).toInt()}%",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            } else {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(stringResource(R.string.audio_preview_loading), color = Color.White)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            if (transfer == null) {
+                                Button(onClick = { viewModel.downloadFile(file) }) {
+                                    Text(stringResource(R.string.download_to_preview))
+                                }
+                            }
+                        }
+                    }
+                } else if (isVideoFile) {
+                    val localFile = viewModel.getLocalFile(file)
+                    if (localFile != null) {
+                        VideoPreviewScreen(file = localFile)
+                    } else {
+                        val transfer by viewModel.getTransferProgress(file.id).collectAsState(null)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(32.dp).fillMaxWidth()
+                        ) {
+                            if (transfer != null) {
+                                LinearProgressIndicator(
+                                    progress = transfer!!.progress,
+                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.White.copy(alpha = 0.2f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "${(transfer!!.progress * 100).toInt()}%",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            } else {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(stringResource(R.string.video_preview_loading), color = Color.White)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            if (transfer == null) {
+                                Button(onClick = { viewModel.downloadFile(file) }) {
+                                    Text(stringResource(R.string.download_to_preview))
+                                }
                             }
                         }
                     }
@@ -1317,11 +1546,11 @@ fun SmallProviderBadge(file: CloudFile) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (logoRes != null) {
-                Icon(
+                Image(
                     painter = painterResource(id = logoRes),
                     contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(12.dp),
+                    contentScale = ContentScale.Fit
                 )
             } else {
                 Icon(
@@ -1457,7 +1686,7 @@ fun FileActionBottomSheet(file: CloudFile, onDismiss: () -> Unit, onAction: (Str
             ActionItem(
                 icon = Icons.Default.Share, 
                 label = stringResource(R.string.share),
-                enabled = isCloudWebSupported && file.isOwner,
+                enabled = isCloudWebSupported && !file.isTrashed,
                 onClick = { onAction("share") }
             )
 

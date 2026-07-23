@@ -65,6 +65,9 @@ interface CloudFileDao {
     @Query("SELECT * FROM cloud_files WHERE id = :id")
     suspend fun getFileById(id: String): CloudFileEntity?
 
+    @Query("SELECT * FROM cloud_files WHERE name = :name AND (parentId = :parentId OR (:parentId IS NULL AND parentId IS NULL)) AND accountId = :accountId LIMIT 1")
+    suspend fun getFileByNameInFolder(name: String, parentId: String?, accountId: String): CloudFileEntity?
+
     @Query("DELETE FROM cloud_files WHERE accountId = :accountId")
     suspend fun deleteFilesByAccount(accountId: String)
 }

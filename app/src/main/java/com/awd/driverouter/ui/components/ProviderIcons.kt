@@ -1,5 +1,6 @@
 package com.awd.driverouter.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import com.awd.driverouter.R
@@ -38,11 +40,11 @@ fun BrandIcon(providerId: String, size: Dp) {
     Surface(shape = CircleShape, color = color.copy(alpha = 0.1f), modifier = Modifier.size(size)) {
         Box(contentAlignment = Alignment.Center) {
             if (logoRes != null) {
-                Icon(
+                Image(
                     painter = painterResource(id = logoRes),
                     contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(size * 0.6f)
+                    modifier = Modifier.size(size * 0.7f),
+                    contentScale = ContentScale.Fit
                 )
             } else {
                 Icon(

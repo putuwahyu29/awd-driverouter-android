@@ -3,6 +3,7 @@ package com.awd.driverouter.domain.provider
 import com.awd.driverouter.domain.model.CloudAccount
 import com.awd.driverouter.domain.model.CloudFile
 import com.awd.driverouter.domain.model.QuotaInfo
+import com.awd.driverouter.domain.model.SharePermission
 import java.io.File
 
 interface CloudProvider {
@@ -39,6 +40,7 @@ interface CloudProvider {
 
     // Sharing Methods
     fun supportsSharing(): Boolean = false
+    fun supportsMemberSharing(): Boolean = false
     
     suspend fun shareFile(account: CloudAccount, fileId: String, email: String, role: String): Result<Unit> {
         return Result.failure(Exception("Sharing not supported by this provider"))
@@ -46,6 +48,10 @@ interface CloudProvider {
 
     suspend fun setGeneralAccess(account: CloudAccount, fileId: String, isPublic: Boolean): Result<Unit> {
         return Result.failure(Exception("General access management not supported"))
+    }
+    
+    suspend fun getPermissions(account: CloudAccount, fileId: String): Result<List<SharePermission>> {
+        return Result.failure(Exception("Fetching permissions not supported"))
     }
     
     suspend fun getShareLink(account: CloudAccount, fileId: String): Result<String> {

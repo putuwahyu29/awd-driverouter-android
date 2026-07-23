@@ -22,6 +22,7 @@ data class CloudFile(
     val lastAccessedTime: Long? = null,
     val shareLink: String? = null,
     val supportsNativeSharing: Boolean = false,
+    val supportsMemberSharing: Boolean = false,
     val isOwner: Boolean = true,
     val isTrashed: Boolean = false
 )
