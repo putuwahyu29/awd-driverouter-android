@@ -30,7 +30,18 @@ class NotificationHelper(private val context: Context) {
 
     fun getTransferNotificationBuilder(title: String, content: String): NotificationCompat.Builder {
         return NotificationCompat.Builder(context, TRANSFER_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.stat_sys_download) // Use system icon for better status bar visibility
+            .setContentTitle(title)
+            .setContentText(content)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
+    }
+
+    fun getBackupNotificationBuilder(title: String, content: String): NotificationCompat.Builder {
+        return NotificationCompat.Builder(context, TRANSFER_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle(title)
             .setContentText(content)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -45,13 +56,25 @@ class NotificationHelper(private val context: Context) {
         notificationManager.notify(notificationId, builder.build())
     }
 
-    fun notifyComplete(title: String, notificationId: Int = TRANSFER_NOTIFICATION_ID + 1) {
+    fun notifyComplete(title: String, notificationId: Int = TRANSFER_NOTIFICATION_ID + 100) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val builder = NotificationCompat.Builder(context, TRANSFER_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(context.getString(R.string.transfer_complete))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setOngoing(false)
+            .setAutoCancel(true)
+        notificationManager.notify(notificationId, builder.build())
+    }
+
+    fun notifyFailed(title: String, reason: String?, notificationId: Int = TRANSFER_NOTIFICATION_ID + 200) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val builder = NotificationCompat.Builder(context, TRANSFER_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle(title)
+            .setContentText(reason ?: context.getString(R.string.transfer_failed))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(false)
             .setAutoCancel(true)
         notificationManager.notify(notificationId, builder.build())

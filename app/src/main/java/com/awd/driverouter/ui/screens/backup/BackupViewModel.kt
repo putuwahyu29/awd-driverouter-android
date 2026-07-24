@@ -34,7 +34,8 @@ class BackupViewModel @Inject constructor(
         cloudName: String,
         strategy: AllocationStrategy,
         syncMode: SyncMode,
-        wifiOnly: Boolean
+        wifiOnly: Boolean,
+        intervalMinutes: Int = 60
     ) {
         viewModelScope.launch {
             backupDao.insertConfig(
@@ -44,7 +45,8 @@ class BackupViewModel @Inject constructor(
                     cloudFolderName = cloudName,
                     strategy = strategy,
                     syncMode = syncMode,
-                    wifiOnly = wifiOnly
+                    wifiOnly = wifiOnly,
+                    syncIntervalMinutes = intervalMinutes
                 )
             )
             scheduleBackupIfNeeded()
@@ -72,29 +74,52 @@ class BackupViewModel @Inject constructor(
         }
     }
 
+    fun syncNow(config: BackupConfigEntity) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(if (config.wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+            .build()
+
+        val syncRequest = OneTimeWorkRequestBuilder<BackupWorker>()
+            .setConstraints(constraints)
+            .addTag("manual_backup_${config.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "manual_backup_${config.id}",
+            ExistingWorkPolicy.REPLACE,
+            syncRequest
+        )
+    }
+
     private suspend fun scheduleBackupIfNeeded() {
-        val activeConfigs = backupDao.getActiveConfigs()
-        if (activeConfigs.isNotEmpty()) {
-            // Simplified scheduling: if ANY backup is enabled, run the worker.
-            // In a more complex app, we'd have different constraints per config.
-            val anyWifiOnly = activeConfigs.any { it.wifiOnly }
-            
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(if (anyWifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
-                .build()
+        val allConfigs = backupDao.getAllConfigs().stateIn(viewModelScope).value 
+        
+        allConfigs.forEach { config ->
+            val workName = "auto_backup_${config.id}"
+            if (config.isEnabled) {
+                val constraints = Constraints.Builder()
+                    .setRequiredNetworkType(if (config.wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                    .build()
 
-            val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(1, TimeUnit.HOURS)
-                .setConstraints(constraints)
-                .addTag("auto_backup")
-                .build()
+                // WorkManager minimum interval is 15 minutes
+                val interval = config.syncIntervalMinutes.coerceAtLeast(15).toLong()
 
-            workManager.enqueueUniquePeriodicWork(
-                "auto_backup",
-                ExistingPeriodicWorkPolicy.REPLACE,
-                backupRequest
-            )
-        } else {
-            workManager.cancelUniqueWork("auto_backup")
+                val backupRequest = PeriodicWorkRequestBuilder<BackupWorker>(interval, TimeUnit.MINUTES)
+                    .setConstraints(constraints)
+                    .addTag(workName)
+                    .build()
+
+                workManager.enqueueUniquePeriodicWork(
+                    workName,
+                    ExistingPeriodicWorkPolicy.UPDATE, // Use UPDATE to preserve state if possible
+                    backupRequest
+                )
+            } else {
+                workManager.cancelUniqueWork(workName)
+            }
         }
+        
+        // Also cancel the legacy global "auto_backup" if it exists
+        workManager.cancelUniqueWork("auto_backup")
     }
 }

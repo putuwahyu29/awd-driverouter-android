@@ -83,6 +83,15 @@
     <string name="last_backup">Terakhir: %1$s</string>
     <string name="never_backed_up">Belum pernah</string>
     <string name="connect_account_first">Hubungkan akun dulu</string>
+    <string name="sync_interval">Interval Sinkronisasi</string>
+    <string name="interval">Interval</string>
+    <string name="minutes">menit</string>
+    <string name="hour">jam</string>
+    <string name="hours">jam</string>
+    <string name="sync_now">Sinkronkan Sekarang</string>
+    <string name="backup_in_progress">Pencadangan sedang berlangsung</string>
+    <string name="backup_complete">Pencadangan selesai</string>
+    <string name="backup_failed">Pencadangan gagal</string>
 
     <string name="open_native">Buka di Aplikasi HP</string>
     <string name="downloading_to_open">Mendownload file untuk dibuka…</string>

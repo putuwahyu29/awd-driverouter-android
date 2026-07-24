@@ -11,6 +11,7 @@ data class BackupConfigEntity(
     val cloudFolderName: String,
     val strategy: AllocationStrategy,
     val syncMode: SyncMode = SyncMode.ONE_WAY,
+    val syncIntervalMinutes: Int = 60, // Default 1 hour
     val isEnabled: Boolean = true,
     val lastBackupTime: Long = 0,
     val wifiOnly: Boolean = true

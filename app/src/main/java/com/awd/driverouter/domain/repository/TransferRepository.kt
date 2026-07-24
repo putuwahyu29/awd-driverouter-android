@@ -10,7 +10,7 @@ interface TransferRepository {
     
     fun getTransferByFileId(fileId: String): Flow<Transfer?>
     
-    suspend fun startDownload(file: CloudFile)
+    suspend fun startDownload(file: CloudFile, destinationUri: String? = null)
     
     suspend fun startUpload(uri: Uri, accountId: String, targetFolderId: String?)
     

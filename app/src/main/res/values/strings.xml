@@ -82,6 +82,15 @@
     <string name="last_backup">Last: %1$s</string>
     <string name="never_backed_up">Never</string>
     <string name="connect_account_first">Connect an account first</string>
+    <string name="sync_interval">Sync Interval</string>
+    <string name="interval">Interval</string>
+    <string name="minutes">minutes</string>
+    <string name="hour">hour</string>
+    <string name="hours">hours</string>
+    <string name="sync_now">Sync Now</string>
+    <string name="backup_in_progress">Backup in progress</string>
+    <string name="backup_complete">Backup complete</string>
+    <string name="backup_failed">Backup failed</string>
 
     <string name="open_native">Open in App</string>
     <string name="downloading_to_open">Downloading file to open…</string>

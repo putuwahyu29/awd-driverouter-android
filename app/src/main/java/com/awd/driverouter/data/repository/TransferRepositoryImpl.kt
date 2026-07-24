@@ -46,7 +46,7 @@ class TransferRepositoryImpl @Inject constructor(
         return dao.getTransferByFileId(fileId).map { it?.toDomain() }
     }
 
-    override suspend fun startDownload(file: CloudFile) {
+    override suspend fun startDownload(file: CloudFile, destinationUri: String?) {
         val transferId = UUID.randomUUID().toString()
         val account = accountDao.getAllAccounts().first().find { it.id == file.accountId }
         
@@ -72,7 +72,8 @@ class TransferRepositoryImpl @Inject constructor(
             "mime_type" to file.mimeType,
             "provider" to file.provider,
             "expected_size" to (file.size ?: 0L),
-            "type" to "DOWNLOAD"
+            "type" to "DOWNLOAD",
+            "destination_uri" to destinationUri
         )
 
         enqueueWork(transferId, data)

@@ -94,8 +94,9 @@ class TransferWorker @AssistedInject constructor(
             if (type == "DOWNLOAD") {
                 if (fileId == null) return fail(transferId, "Missing file ID for download")
                 val expectedSize = inputData.getLong("expected_size", 0L)
+                val destinationUri = inputData.getString("destination_uri")
                 
-                val customUriStr = settingsManager.downloadLocationUri.value
+                val customUriStr = destinationUri ?: settingsManager.downloadLocationUri.value
                 val tempDir = File(context.cacheDir, "temp_downloads")
                 if (!tempDir.exists()) tempDir.mkdirs()
                 val tempFile = File(tempDir, fileName)
@@ -141,11 +142,11 @@ class TransferWorker @AssistedInject constructor(
                     }
                     
                     transferDao.updateProgress(transferId, 1f, TransferStatus.COMPLETED)
-                    notificationHelper.notifyComplete(fileName, notificationId)
+                    notificationHelper.notifyComplete(fileName, transferId.hashCode() + 1)
                     Result.success()
                 } else {
                     if (tempFile.exists()) tempFile.delete()
-                    fail(transferId, "Download failed: ${result.exceptionOrNull()?.message}", notificationId)
+                    fail(transferId, "Download failed: ${result.exceptionOrNull()?.message}", notificationId, fileName)
                 }
             } else {
                 // UPLOAD
@@ -160,15 +161,15 @@ class TransferWorker @AssistedInject constructor(
                 
                 if (result.isSuccess) {
                     transferDao.updateProgress(transferId, 1f, TransferStatus.COMPLETED)
-                    notificationHelper.notifyComplete(fileName, notificationId)
+                    notificationHelper.notifyComplete(fileName, transferId.hashCode() + 1)
                     Result.success()
                 } else {
-                    fail(transferId, "Upload failed: ${result.exceptionOrNull()?.message}", notificationId)
+                    fail(transferId, "Upload failed: ${result.exceptionOrNull()?.message}", notificationId, fileName)
                 }
             }
         } catch (e: Throwable) {
             Log.e("TransferWorker", "CRITICAL ERROR in transfer $transferId", e)
-            fail(transferId, "System Error: ${e.message}", transferId.hashCode())
+            fail(transferId, "System Error: ${e.message}", transferId.hashCode(), fileName)
         }
     }
 
@@ -202,9 +203,12 @@ class TransferWorker @AssistedInject constructor(
         }
     }
 
-    private suspend fun fail(id: String, reason: String? = null, notificationId: Int? = null): Result {
+    private suspend fun fail(id: String, reason: String? = null, notificationId: Int? = null, fileName: String? = null): Result {
         Log.e("TransferWorker", "Transfer $id failed: $reason")
         transferDao.updateProgress(id, 0f, TransferStatus.FAILED)
+        if (fileName != null && notificationId != null) {
+            notificationHelper.notifyFailed(fileName, reason, notificationId + 2)
+        }
         return Result.failure()
     }
 }

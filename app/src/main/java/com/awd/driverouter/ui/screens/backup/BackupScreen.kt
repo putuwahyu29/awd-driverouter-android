@@ -116,6 +116,7 @@ fun BackupScreen(
                     BackupConfigItem(
                         config = config,
                         onToggle = { viewModel.toggleConfig(config, it) },
+                        onSyncNow = { viewModel.syncNow(config) },
                         onEdit = { configToEdit = config },
                         onDelete = { configToDelete = config }
                     )
@@ -131,7 +132,7 @@ fun BackupScreen(
                 showAddDialog = false
                 configToEdit = null
             },
-            onConfirm = { uri, localName, cloudName, strategy, syncMode, wifiOnly ->
+            onConfirm = { uri, localName, cloudName, strategy, syncMode, wifiOnly, interval ->
                 if (configToEdit != null) {
                     viewModel.updateConfig(configToEdit!!.copy(
                         localFolderUri = uri,
@@ -139,10 +140,11 @@ fun BackupScreen(
                         cloudFolderName = cloudName,
                         strategy = strategy,
                         syncMode = syncMode,
-                        wifiOnly = wifiOnly
+                        wifiOnly = wifiOnly,
+                        syncIntervalMinutes = interval
                     ))
                 } else {
-                    viewModel.addBackupConfig(uri, localName, cloudName, strategy, syncMode, wifiOnly)
+                    viewModel.addBackupConfig(uri, localName, cloudName, strategy, syncMode, wifiOnly, interval)
                 }
                 showAddDialog = false
                 configToEdit = null
@@ -179,6 +181,7 @@ fun BackupScreen(
 fun BackupConfigItem(
     config: BackupConfigEntity,
     onToggle: (Boolean) -> Unit,
+    onSyncNow: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -198,6 +201,9 @@ fun BackupConfigItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                IconButton(onClick = onSyncNow, enabled = config.isEnabled) {
+                    Icon(Icons.Default.Sync, contentDescription = "Sync Now", tint = if (config.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                }
                 Switch(checked = config.isEnabled, onCheckedChange = onToggle)
             }
             
@@ -208,9 +214,9 @@ fun BackupConfigItem(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Settings, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outline)
+                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.outline)
                         Spacer(Modifier.width(4.dp))
-                        Text(text = "${stringResource(R.string.upload_strategy)}: ${getStrategyName(config.strategy)}", style = MaterialTheme.typography.labelSmall)
+                        Text(text = "${stringResource(R.string.interval)}: ${formatInterval(config.syncIntervalMinutes)}", style = MaterialTheme.typography.labelSmall)
                     }
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -261,7 +267,7 @@ fun BackupConfigItem(
 fun AddBackupDialog(
     config: BackupConfigEntity? = null,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, AllocationStrategy, SyncMode, Boolean) -> Unit
+    onConfirm: (String, String, String, AllocationStrategy, SyncMode, Boolean, Int) -> Unit
 ) {
     var selectedUri by remember { mutableStateOf(config?.localFolderUri?.let { Uri.parse(it) }) }
     var localName by remember { mutableStateOf(config?.localFolderName ?: "") }
@@ -269,6 +275,7 @@ fun AddBackupDialog(
     var selectedStrategy by remember { mutableStateOf(config?.strategy ?: AllocationStrategy.MIRROR) }
     var selectedSyncMode by remember { mutableStateOf(config?.syncMode ?: SyncMode.ONE_WAY) }
     var wifiOnly by remember { mutableStateOf(config?.wifiOnly ?: true) }
+    var selectedInterval by remember { mutableStateOf(config?.syncIntervalMinutes ?: 60) }
     
     val context = LocalContext.current
     val defaultFolderName = stringResource(R.string.default_folder_name)
@@ -333,6 +340,38 @@ fun AddBackupDialog(
                 }
 
                 Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.sync_interval), style = MaterialTheme.typography.labelMedium)
+                
+                var intervalExpanded by remember { mutableStateOf(false) }
+                val intervals = listOf(15, 30, 60, 180, 360, 720, 1440)
+                ExposedDropdownMenuBox(
+                    expanded = intervalExpanded,
+                    onExpandedChange = { intervalExpanded = !intervalExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = formatInterval(selectedInterval),
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = intervalExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = intervalExpanded,
+                        onDismissRequest = { intervalExpanded = false }
+                    ) {
+                        intervals.forEach { interval ->
+                            DropdownMenuItem(
+                                text = { Text(formatInterval(interval)) },
+                                onClick = {
+                                    selectedInterval = interval
+                                    intervalExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
                 Text(stringResource(R.string.cloud_allocation_strategy), style = MaterialTheme.typography.labelMedium)
                 
                 var expanded by remember { mutableStateOf(false) }
@@ -378,7 +417,7 @@ fun AddBackupDialog(
         confirmButton = {
             Button(
                 onClick = { 
-                    selectedUri?.let { onConfirm(it.toString(), localName, cloudName, selectedStrategy, selectedSyncMode, wifiOnly) }
+                    selectedUri?.let { onConfirm(it.toString(), localName, cloudName, selectedStrategy, selectedSyncMode, wifiOnly, selectedInterval) }
                 },
                 enabled = selectedUri != null && cloudName.isNotEmpty()
             ) {
@@ -415,4 +454,14 @@ fun getStrategyDesc(strategy: AllocationStrategy): String = when(strategy) {
 
 fun formatTimestamp(timestamp: Long): String {
     return SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
+}
+
+@Composable
+fun formatInterval(minutes: Int): String {
+    return when {
+        minutes < 60 -> "$minutes ${stringResource(R.string.minutes)}"
+        minutes == 60 -> "1 ${stringResource(R.string.hour)}"
+        minutes % 60 == 0 -> "${minutes / 60} ${stringResource(R.string.hours)}"
+        else -> "$minutes ${stringResource(R.string.minutes)}"
+    }
 }
